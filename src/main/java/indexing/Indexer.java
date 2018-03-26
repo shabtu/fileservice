@@ -1,3 +1,6 @@
+package indexing;
+
+import common.FileStorage;
 import io.minio.errors.*;
 import org.xmlpull.v1.XmlPullParserException;
 
@@ -7,11 +10,12 @@ import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.TimeoutException;
 
 
-public class Main {
+public class Indexer {
 
 
     public static final String MINIO_ENDPOINT = "http://localhost:9000";
-    public static final String RMQ_ENDPOINT = "10.12.97.194";
+    public static final String ES_ENDPOINT = "localhost";
+    public static final String RMQ_ENDPOINT = "localhost";
     public static final String ACCESS_KEY = "minio";
     public static final String SECRET_KEY = "minio123";
     public static final String BUCKET_NAME = "images";
@@ -27,11 +31,15 @@ public class Main {
 
         eventReceiver.run();
 
-        FileService fileService = new FileService(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
+        FileStorage fileStorage = new FileStorage(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
 
-        fileService.createBucket(BUCKET_NAME);
+        if (!fileStorage.checkIfBucketExists(BUCKET_NAME))
+            fileStorage.createBucket(BUCKET_NAME);
 
-        fileService.putObject(BUCKET_NAME, fileName, fileName);
+        fileStorage.putObject(BUCKET_NAME, "101_5_xxxxxxxx-xxxxxxxx-xxxxxxxx-xxxxxxxx_20180105_Faktura", fileName);
+        fileStorage.putObject(BUCKET_NAME, "101_5_xxxxxxxx-xxxxxxxx-xxxxxxxx-xxxxxxxx_20180105_Faktura", fileName);
+
+
 
 
     }

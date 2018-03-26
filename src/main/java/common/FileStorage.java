@@ -1,3 +1,4 @@
+package common;
 
 import io.minio.errors.*;
 
@@ -8,11 +9,11 @@ import org.xmlpull.v1.XmlPullParserException;
 import io.minio.MinioClient;
 
 
-public class FileService {
+public class FileStorage {
 
     private final MinioClient minioClient;
 
-    public FileService(String endpoint, String accessKey, String secretKey) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, RegionConflictException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException {
+    public FileStorage(String endpoint, String accessKey, String secretKey) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, RegionConflictException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException {
 
         minioClient = createMinioClient(endpoint, accessKey, secretKey);
 
