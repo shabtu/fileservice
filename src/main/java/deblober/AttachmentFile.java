@@ -1,34 +1,22 @@
-package common;
+package deblober;
+
+import common.FileInfo;
 
 import java.sql.Blob;
 
-public class AttachmentFile {
+public class AttachmentFile extends FileInfo {
 
     Blob fileData;
-    int sno, bo_sno;
-    String name, uniqueId, creationDate, bucket;
 
-    public AttachmentFile(int sno, int bo_sno, String name, String uniqueId, String creationDate, Blob fileData, String bucket){
-        this.sno = sno;
-        this.bo_sno = bo_sno;
-        this.name = name;
-        this.uniqueId = uniqueId;
-        this.creationDate = creationDate;
-        this.bucket = bucket;
+    public AttachmentFile(int sno, int bo_sno, String creationDate, String uniqueId, String name, Blob fileData, String bucket){
+        super(sno, bo_sno, creationDate, uniqueId, name, bucket);
         this.fileData = fileData;
     }
     public Blob getFileData() {
         return fileData;
     }
 
-    @Override
-    public String toString(){
-        return String.format(
-                "File[sno=%d, bo_sno=%d, name='%s', date='%s']",
-                sno, bo_sno, creationDate, name);
-    }
-
     public String generateFileName(){
-        return sno +  "_" + bo_sno + "_" + creationDate + "_" + uniqueId + "_" + name;
+        return getSno() +  "_" + getBo_sno() + "_" + getCreationDate() + "_" + getUniqueId() + "_" + getName();
     }
 }

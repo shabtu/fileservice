@@ -3,6 +3,7 @@ package indexing;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.rabbitmq.client.*;
+import common.FileInfo;
 import common.ElasticsearchService;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -15,24 +16,20 @@ public class EventReceiver extends Thread{
 
     private static String RMQ_ENDPOINT;
     private static String queueName;
-    private ConnectionFactory factory;
-    private Connection connection;
     private Channel channel;
     private Consumer consumer;
-    Gson gson;
-    int id = 0;
+    private int id = 0;
 
-    ElasticsearchService elasticsearchService;
+    private ElasticsearchService elasticsearchService =  new ElasticsearchService("localhost");
 
     public EventReceiver(String endpoint){
         RMQ_ENDPOINT = endpoint;
-        elasticsearchService = new ElasticsearchService("localhost");
     }
 
     public void createConnection() throws IOException, TimeoutException {
-        factory = new ConnectionFactory();
+        ConnectionFactory factory = new ConnectionFactory();
         factory.setHost(RMQ_ENDPOINT);
-        connection = factory.newConnection();
+        Connection connection = factory.newConnection();
         channel = connection.createChannel();
 
         channel.exchangeDeclare("bucketevents", "fanout");
@@ -42,7 +39,7 @@ public class EventReceiver extends Thread{
         System.out.println(" [*] Waiting for messages. To exit press CTRL+C");
     }
 
-    public Channel getChannel() {
+    private Channel getChannel() {
         return channel;
     }
 
@@ -57,18 +54,14 @@ public class EventReceiver extends Thread{
                 String jsonString = new String(body, "UTF-8");
                 System.out.println(" [x] Received '" + jsonString + "'");
 
+                FileInfo file = parseFile(jsonString);
 
-                AttachmentFile file = parseFile(jsonString);
-
-                System.out.println(file.toString());
                 indexFile(file);
-
-
             }
         };
     }
 
-    public AttachmentFile parseFile(String jsonString){
+    private FileInfo parseFile(String jsonString){
 
         JsonObject jobj = new Gson().fromJson(jsonString, JsonObject.class);
 
@@ -76,20 +69,24 @@ public class EventReceiver extends Thread{
 
         String[] fields = bucketAndFilename[1].split("_");
 
-
-        return new AttachmentFile(Integer.parseInt(fields[0]), Integer.parseInt(fields[1]), fields[2], fields[3], fields[4].substring(0,fields[4].length()-2), bucketAndFilename[0].substring(1));
+        return new FileInfo(Integer.parseInt(fields[0]),
+                Integer.parseInt(fields[1]),
+                fields[2],
+                fields[3],
+                fields[4].substring(0, fields[4].length()-1),
+                bucketAndFilename[0].substring(1));
     }
 
-    public void indexFile(AttachmentFile file) throws IOException {
+    private void indexFile(FileInfo file) throws IOException {
         XContentBuilder builder = XContentFactory.jsonBuilder();
         builder.startObject();
         {
-            builder.field("bo", file.sno);
-            builder.field("bo_sno", file.bo_sno);
-            builder.field("name", file.name);
-            builder.field("uid", file.uniqueId);
-            builder.field("date", file.creationDate);
-            builder.field("bucket", file.bucket);
+            builder.field("sno", file.getSno());
+            builder.field("bo_sno", file.getBo_sno());
+            builder.field("name", file.getName());
+            builder.field("uid", file.getUniqueId());
+            builder.field("date", file.getCreationDate());
+            builder.field("bucket", file.getBucket());
         }
         builder.endObject();
         IndexRequest indexRequest = new IndexRequest("invoices", "doc",  String.valueOf(id++))
@@ -98,7 +95,7 @@ public class EventReceiver extends Thread{
         elasticsearchService.getElasticsearchClient().index(indexRequest);
     }
 
-    public void startConsuming() throws IOException {
+    private void startConsuming() throws IOException {
          channel.basicConsume(queueName, true, consumer);
     }
 

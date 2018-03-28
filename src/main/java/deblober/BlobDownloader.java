@@ -8,19 +8,17 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.InputStream;
+import java.io.*;
 import java.util.LinkedList;
 
 @SpringBootApplication
-public class Application implements CommandLineRunner {
+public class BlobDownloader implements CommandLineRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(Application.class);
+    private static final Logger log = LoggerFactory.getLogger(BlobDownloader.class);
 
     public static void main(String args[]) {
 
-        SpringApplication.run(Application.class, args);
+        SpringApplication.run(BlobDownloader.class, args);
     }
 
     @Autowired
@@ -30,35 +28,49 @@ public class Application implements CommandLineRunner {
     @Override
     public void run(String... strings) throws Exception {
 
-        log.info("Creating tables");
+        String sql = "SELECT SNO, BO_SNO, NAME, UNIQUE_ID, CREATIONDATE, FILEDATA FROM APL_FILE FETCH FIRST 200 ROWS ONLY";
 
-        String sql = "SELECT SNO, BO_SNO, NAME, UNIQUE_ID, CREATIONDATE, FILEDATA FROM APL_FILE FETCH FIRST 10 ROWS ONLY";
-
-        log.info("Querying for customer records where first_name = 'Josh':");
+        log.info("Querying for attachment files");
         jdbcTemplate.query(
                 sql,
                 (rs, rowNum) -> new AttachmentFile(
                         rs.getInt("SNO"),
                         rs.getInt("BO_SNO"),
-                        rs.getString("NAME"),
-                        rs.getString("UNIQUE_ID"),
                         rs.getDate("CREATIONDATE").toString(),
+                        rs.getString("UNIQUE_ID"),
+                        nameFormatter(rs.getString("NAME")),
                         rs.getBlob("FILEDATA"),
                         "images")
         ).forEach(attachmentFile -> files.add(attachmentFile));
 
+        for (AttachmentFile attachmentFile : files) {
+            InputStream stream = attachmentFile.getFileData().getBinaryStream();
 
-        for (AttachmentFile file : files) {
-            InputStream stream = file.getFileData().getBinaryStream();
+            log.info("Writing file: " + attachmentFile.generateFileName());
+            OutputStream out = new FileOutputStream(new File("downloads/" + attachmentFile.generateFileName()));
+            byte[] buff = new byte[4096];  // how much of the blob to read/write at a time
+            int len;
 
-            FileWriter fileWriter = new FileWriter(new File("downloads/" + file.generateFileName()));
-
-            byte[] buf = new byte[16384];
-            int bytesRead;
-            while ((bytesRead = stream.read(buf, 0, buf.length)) >= 0) {
-                fileWriter.write(new String(buf, 0, bytesRead));
+            while ((len = stream.read(buff)) != -1) {
+                out.write(buff, 0, len);
             }
+
         }
 
+    }
+
+    private String nameFormatter(String name) {
+
+        String[] nameParts = name.split("_");
+        StringBuilder nameBuilder = new StringBuilder();
+
+        for (int i = 0; i < nameParts.length; i++) {
+            if (i == 0)
+                nameBuilder.append(nameParts[i]);
+            else
+                nameBuilder.append(nameParts[i].substring(0,1).toUpperCase() + nameParts[i].substring(1));
+        }
+
+        return nameBuilder.toString();
     }
 }

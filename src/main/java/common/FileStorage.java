@@ -13,7 +13,7 @@ public class FileStorage {
 
     private final MinioClient minioClient;
 
-    public FileStorage(String endpoint, String accessKey, String secretKey) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, RegionConflictException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException {
+    public FileStorage(String endpoint, String accessKey, String secretKey) throws InvalidPortException, InvalidEndpointException {
 
         minioClient = createMinioClient(endpoint, accessKey, secretKey);
 
@@ -43,27 +43,10 @@ public class FileStorage {
 
     }
 
-    public void removeBucket(String bucketName) throws IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException {
-        if(checkIfBucketExists(bucketName))
-            minioClient.removeBucket(bucketName);
-    }
+    public void getObject(String bucketName, String objectName, String folderName) throws IOException, InvalidKeyException, NoSuchAlgorithmException, InsufficientDataException, InvalidArgumentException, InternalException, NoResponseException, InvalidBucketNameException, XmlPullParserException, ErrorResponseException {
 
-    public void getObject(String bucketName, String objectName) throws IOException, InvalidKeyException, NoSuchAlgorithmException, InsufficientDataException, InvalidArgumentException, InternalException, NoResponseException, InvalidBucketNameException, XmlPullParserException, ErrorResponseException {
-        InputStream stream = minioClient.getObject(bucketName, objectName);
-
-        FileWriter fileWriter = new FileWriter(new File("downloads/" + objectName));
-
-        byte[] buf = new byte[16384];
-        int bytesRead;
-        while ((bytesRead = stream.read(buf, 0, buf.length)) >= 0) {
-            fileWriter.write(new String(buf, 0, bytesRead));
-        }
-
+        minioClient.getObject(bucketName, objectName, folderName + "/" + objectName);
 
     }
 
-    public void removeObject(String bucketName, String objectName) {
-
-
-    }
 }
