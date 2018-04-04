@@ -33,7 +33,7 @@ public class EventReceiver extends Thread{
         channel = connection.createChannel();
 
         channel.exchangeDeclare("bucketevents", "fanout");
-        queueName = channel.queueDeclare().getQueue();
+        queueName = channel.queueDeclare("minioevents", true, false, false, null).getQueue();
         channel.queueBind(queueName, "bucketevents", "");
 
         System.out.println(" [*] Waiting for messages. To exit press CTRL+C");
@@ -53,6 +53,7 @@ public class EventReceiver extends Thread{
                     throws IOException {
                 String jsonString = new String(body, "UTF-8");
                 System.out.println(" [x] Received '" + jsonString + "'");
+                System.out.println("To queue: " + queueName);
 
                 FileInfo file = parseFile(jsonString);
 

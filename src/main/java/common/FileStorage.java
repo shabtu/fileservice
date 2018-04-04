@@ -1,17 +1,22 @@
 package common;
 
+import indexing.Indexer;
 import io.minio.errors.*;
 
 import java.io.*;
 import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
+import java.util.LinkedList;
+import java.util.concurrent.ArrayBlockingQueue;
+
 import org.xmlpull.v1.XmlPullParserException;
 import io.minio.MinioClient;
 
 
-public class FileStorage {
+public class FileStorage extends Thread {
 
     private final MinioClient minioClient;
+    private LinkedList<File> buffer = new LinkedList<>();
 
     public FileStorage(String endpoint, String accessKey, String secretKey) throws InvalidPortException, InvalidEndpointException {
 
@@ -49,4 +54,29 @@ public class FileStorage {
 
     }
 
+    @Override
+    public void run(){
+
+        File file;
+        while (buffer.peek() != null) {
+            file = buffer.remove();
+            try {
+                putObject("images", file.getName(), file.getAbsolutePath());
+            } catch (XmlPullParserException e) {
+                e.printStackTrace();
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            } catch (InvalidKeyException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+    }
+
+    public void addToBuffer(File file) {
+        buffer.add(file);
+    }
 }

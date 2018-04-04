@@ -6,7 +6,6 @@ import org.elasticsearch.client.RestHighLevelClient;
 
 public class ElasticsearchService {
 
-
     private RestHighLevelClient elasticsearchClient;
 
     public ElasticsearchService(String hostName){
