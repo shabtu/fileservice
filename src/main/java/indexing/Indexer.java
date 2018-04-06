@@ -5,6 +5,7 @@ import io.minio.errors.*;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -29,7 +30,7 @@ public class Indexer {
 
         String fileName = "test.jpg";
 
-        EventReceiver[] eventReceivers = new EventReceiver[1];
+        EventReceiver[] eventReceivers = new EventReceiver[10];
 
         for (EventReceiver eventReceiver : eventReceivers) {
             eventReceiver = new EventReceiver(RMQ_ENDPOINT);
@@ -38,18 +39,13 @@ public class Indexer {
             eventReceiver.run();
         }
 
-        FileStorage[] fileStorages = new FileStorage[1];
+        /*FileStorage[] fileStorages = new FileStorage[1];
 
         File[] filesToInject = new File("downloads/").listFiles();
 
         int partitionSize = filesToInject.length/fileStorages.length;
         int partitioned = 0;
 
-       /* files = new ArrayBlockingQueue<>(filesToInject.length);
-
-        for (File file : filesToInject)
-            files.add(file);
-*/
         System.out.println("Number or files: " + filesToInject.length + "\n With partition size: " + partitionSize);
 
         for (int i = 0; i < fileStorages.length; i++) {
@@ -66,6 +62,7 @@ public class Indexer {
 
             fileStorage.run();
         }
+        */
     }
 
     public static ArrayBlockingQueue<File> getFiles() {

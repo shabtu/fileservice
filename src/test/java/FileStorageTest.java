@@ -28,7 +28,7 @@ class FileStorageTest {
     @BeforeEach
     void init() throws IOException, InvalidKeyException, NoSuchAlgorithmException, XmlPullParserException, InvalidPortException, InternalException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InvalidEndpointException, RegionConflictException {
 
-        fileStorage = new FileStorage(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
+        fileStorage = new FileStorage(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY, 1);
         fileStorage.createMinioClient(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
         fileStorage.createBucket(BUCKET_NAME);
         fileStorage.putObject(BUCKET_NAME, "test1.jpg", "test.jpg");

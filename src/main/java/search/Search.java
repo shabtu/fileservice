@@ -48,7 +48,7 @@ public class Search {
                 )
         );
 
-        FileStorage fileStorage = new FileStorage(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
+        FileStorage fileStorage = new FileStorage(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY, 1);
 
         for (FileInfo fileInfo : filePaths){
             System.out.println("Försöker hämta: " + fileInfo.generateFileName());

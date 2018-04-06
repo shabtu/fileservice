@@ -1,25 +1,37 @@
 package common;
 
+import deblober.AttachmentFile;
+import deblober.BlobDownloader;
 import indexing.Indexer;
 import io.minio.errors.*;
 
 import java.io.*;
 import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
+import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.concurrent.ArrayBlockingQueue;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParserException;
 import io.minio.MinioClient;
+
+import static deblober.BlobDownloader.fileQueue;
 
 
 public class FileStorage extends Thread {
 
+
+    private static final Logger log = LoggerFactory.getLogger(FileStorage.class);
+    int id;
+
     private final MinioClient minioClient;
-    private LinkedList<File> buffer = new LinkedList<>();
+    private LinkedList<AttachmentFile> buffer = new LinkedList<>();
 
-    public FileStorage(String endpoint, String accessKey, String secretKey) throws InvalidPortException, InvalidEndpointException {
+    public FileStorage(String endpoint, String accessKey, String secretKey, int id) throws InvalidPortException, InvalidEndpointException {
 
+        this.id = id;
         minioClient = createMinioClient(endpoint, accessKey, secretKey);
 
     }
@@ -48,6 +60,17 @@ public class FileStorage extends Thread {
 
     }
 
+    public void putObjectStream(String bucketName, String objectName, InputStream inputStream) throws XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, IOException {
+        try{
+            // Upload the zip file to the bucket with putObject
+            minioClient.putObject(bucketName, objectName, inputStream, "document");
+            System.out.println("newFile is successfully uploaded as " + objectName + " to " + bucketName + " bucket.");
+        } catch (MinioException e) {
+            System.out.println("Error occurred: " + e);
+        }
+
+    }
+
     public void getObject(String bucketName, String objectName, String folderName) throws IOException, InvalidKeyException, NoSuchAlgorithmException, InsufficientDataException, InvalidArgumentException, InternalException, NoResponseException, InvalidBucketNameException, XmlPullParserException, ErrorResponseException {
 
         minioClient.getObject(bucketName, objectName, folderName + "/" + objectName);
@@ -57,11 +80,12 @@ public class FileStorage extends Thread {
     @Override
     public void run(){
 
-        File file;
-        while (buffer.peek() != null) {
-            file = buffer.remove();
+        AttachmentFile attachmentFile;
+        while (fileQueue.peek() != null) {
+            log.info("Thread " + id + " is testing..");
+            attachmentFile = fileQueue.remove();
             try {
-                putObject("images", file.getName(), file.getAbsolutePath());
+                putObjectStream("images", attachmentFile.generateFileName(), attachmentFile.getFileData().getBinaryStream());
             } catch (XmlPullParserException e) {
                 e.printStackTrace();
             } catch (NoSuchAlgorithmException e) {
@@ -70,13 +94,17 @@ public class FileStorage extends Thread {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
 
         }
 
+        log.info("Thread " + id + " died");
+
     }
 
-    public void addToBuffer(File file) {
-        buffer.add(file);
+    public void addToBuffer(AttachmentFile attachmentFile) {
+        buffer.add(attachmentFile);
     }
 }
