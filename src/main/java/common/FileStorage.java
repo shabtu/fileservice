@@ -65,7 +65,7 @@ public class FileStorage extends Thread {
 
     public void getObject(String bucketName, String objectName, String folderName) throws IOException, InvalidKeyException, NoSuchAlgorithmException, InsufficientDataException, InvalidArgumentException, InternalException, NoResponseException, InvalidBucketNameException, XmlPullParserException, ErrorResponseException {
 
-        minioClient.getObject(bucketName, objectName, folderName + "/" + objectName);
+        minioClient.getObject(bucketName, objectName, folderName + "/" + parseFile(objectName).generateFileName());
 
     }
 
@@ -73,7 +73,7 @@ public class FileStorage extends Thread {
 
 
 
-        String[] fields = fileName.split("_");
+        String[] fields = fileName.split("/");
 
         return new FileInfo(Integer.parseInt(fields[0]),
                 Integer.parseInt(fields[1]),

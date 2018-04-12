@@ -46,11 +46,8 @@ public class Indexer {
 
         for (File file : filesToInject){
             FileInputStream fileInputStream = new FileInputStream(file);
-            //byte[] data = new byte[(int) file.length()];
-            //fileInputStream.read(data);
 
-
-            AttachmentFile attachmentFile = parseFile(file.getName(), fileInputStream);
+            AttachmentFile attachmentFile = createAttachmentFile(file.getName(), fileInputStream);
 
             log.info(fileStorages[0].getName());
 
@@ -65,13 +62,10 @@ public class Indexer {
 
         for (FileStorage fileStorage: fileStorages)
             executor.execute(fileStorage);
-        //crawlDirectoryAndProcessFiles(filesToInject, executor);
-
-        //runFileStorageThreads(fileStorages);
 
     }
 
-    private static AttachmentFile parseFile(String file, InputStream fileData){
+    private static AttachmentFile createAttachmentFile(String file, InputStream fileData){
 
         String[] fields = file.split("_");
 
@@ -82,18 +76,6 @@ public class Indexer {
                 fields[4],
                 fileData,
                 BUCKET_NAME);
-    }
-
-    private static void runFileStorageThreads(FileStorage[] fileStorages) {
-        for (FileStorage fileStorage : fileStorages) {
-            fileStorage.run();
-        }
-    }
-
-    private static void runEventReceiverThreads(EventReceiver[] eventReceivers) {
-        for (EventReceiver eventReceiver : eventReceivers) {
-            eventReceiver.run();
-        }
     }
 
     private static FileStorage[] initiateFileStorages(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
@@ -123,7 +105,6 @@ public class Indexer {
             eventReceivers[i] = new EventReceiver(RMQ_ENDPOINT);
             eventReceivers[i].createConnection();
             eventReceivers[i].initiateConsumer();
-
         }
 
         return eventReceivers;
