@@ -43,6 +43,10 @@ public class FileInfo {
         return getSno() +  "_" + getBo_sno() + "_" + getCreationDate() + "_" + getUniqueId() + "_" + getName();
     }
 
+    public String generateFileNameWithDirectories(){
+        return getSno() +  "/" + getBo_sno() + "/" + getCreationDate() + "/" + getUniqueId() + "/" + getName();
+    }
+
     @Override
     public String toString(){
         return String.format(

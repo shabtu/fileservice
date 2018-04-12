@@ -66,16 +66,14 @@ public class EventReceiver extends Thread{
 
         JsonObject jobj = new Gson().fromJson(jsonString, JsonObject.class);
 
-        String[] bucketAndFilename = jobj.get("Key").toString().split("/");
+        String[] fields = jobj.get("Key").toString().split("/");
 
-        String[] fields = bucketAndFilename[1].split("_");
-
-        return new FileInfo(Integer.parseInt(fields[0]),
-                Integer.parseInt(fields[1]),
-                fields[2],
+        return new FileInfo(Integer.parseInt(fields[1]),
+                Integer.parseInt(fields[2]),
                 fields[3],
-                fields[4].substring(0, fields[4].length()-1),
-                bucketAndFilename[0].substring(1));
+                fields[4],
+                fields[5],
+                fields[0]);
     }
 
     private void indexFile(FileInfo file) throws IOException {
