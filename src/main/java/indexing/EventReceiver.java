@@ -88,7 +88,7 @@ public class EventReceiver extends Thread{
             builder.field("bucket", file.getBucket());
         }
         builder.endObject();
-        IndexRequest indexRequest = new IndexRequest("invoices", "doc",  String.valueOf(id++))
+        IndexRequest indexRequest = new IndexRequest("invoices", "doc",  file.getUniqueId())
                 .source(builder);
 
         elasticsearchService.getElasticsearchClient().index(indexRequest);

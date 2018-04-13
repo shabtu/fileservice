@@ -34,11 +34,11 @@ public class Indexer {
     public static void main(String[] args) throws IOException, TimeoutException, InvalidKeyException, NoSuchAlgorithmException, XmlPullParserException, InvalidPortException, InternalException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InvalidEndpointException, RegionConflictException {
         // Create a minioClient with the Minio Server name, Port, Access key and Secret key.
 
-        int numberOfThreads = 100, distribution = 0;
+        int numberOfThreads = 10, distribution = 0;
 
         EventReceiver[] eventReceivers = initiateEventReceivers(numberOfThreads);
 
-        FileStorage[] fileStorages = initiateFileStorages(numberOfThreads);
+        FileUploader[] fileUploaders = initiateFileStorages(numberOfThreads);
 
         File[] filesToInject = new File("downloads").listFiles();
 
@@ -49,9 +49,9 @@ public class Indexer {
 
             AttachmentFile attachmentFile = createAttachmentFile(file.getName(), fileInputStream);
 
-            log.info(fileStorages[0].getName());
+            log.info(fileUploaders[0].getName());
 
-            fileStorages[distribution%numberOfThreads].addToBuffer(attachmentFile);
+            fileUploaders[distribution%numberOfThreads].addToBuffer(attachmentFile);
             distribution++;
         }
 
@@ -60,8 +60,8 @@ public class Indexer {
         for (EventReceiver eventReceiver : eventReceivers)
             executor.execute(eventReceiver);
 
-        for (FileStorage fileStorage: fileStorages)
-            executor.execute(fileStorage);
+        for (FileUploader fileUploader: fileUploaders)
+            executor.execute(fileUploader);
 
     }
 
@@ -78,21 +78,21 @@ public class Indexer {
                 BUCKET_NAME);
     }
 
-    private static FileStorage[] initiateFileStorages(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
+    private static FileUploader[] initiateFileStorages(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
 
         log.info("Initiating storage threads..");
 
-        FileStorage[] fileStorages = new FileStorage[numberOfThreads];
+        FileUploader[] fileUploaders = new FileUploader[numberOfThreads];
 
-        for (int i = 0; i < fileStorages.length; i++) {
-            fileStorages[i] = new FileStorage(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
+        for (int i = 0; i < fileUploaders.length; i++) {
+            fileUploaders[i] = new FileUploader(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
 
-            if (!fileStorages[i].checkIfBucketExists(BUCKET_NAME))
-                fileStorages[i].createBucket(BUCKET_NAME);
+            if (!fileUploaders[i].checkIfBucketExists(BUCKET_NAME))
+                fileUploaders[i].createBucket(BUCKET_NAME);
 
         }
 
-        return fileStorages;
+        return fileUploaders;
     }
 
     private static EventReceiver[] initiateEventReceivers(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException, TimeoutException {

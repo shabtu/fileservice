@@ -5,6 +5,8 @@ import common.FileInfo;
 import common.FileStorage;
 import deblober.AttachmentFile;
 import io.minio.errors.*;
+import org.elasticsearch.action.search.MultiSearchRequest;
+import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.index.query.MultiMatchQueryBuilder;
@@ -23,6 +25,8 @@ import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public class Search {
@@ -33,32 +37,38 @@ public class Search {
     private static final String BUCKET_NAME = "images";
 
     private static final Logger log = LoggerFactory.getLogger(Search.class);
+    private static int i;
 
-    public static void main(String[] args) throws IOException, InvalidPortException, InvalidEndpointException, NoSuchAlgorithmException, XmlPullParserException, InvalidKeyException, InsufficientDataException, InvalidArgumentException, InternalException, NoResponseException, ErrorResponseException, InvalidBucketNameException {
+    public static void main(String[] args) throws IOException, InvalidPortException, InvalidEndpointException, NoSuchAlgorithmException, XmlPullParserException, InvalidKeyException, InsufficientDataException, InvalidArgumentException, InternalException, NoResponseException, ErrorResponseException, InvalidBucketNameException, RegionConflictException {
+        int numberOfThreads = 2;
+
         ElasticsearchService elasticsearchService = new ElasticsearchService(ES_ENDPOINT);
 
         File[] filesToInject = new File("downloads").listFiles();
 
+        FileDownloader[] fileDownloaders = initiateFileStorages(numberOfThreads);
+
         log.info("Number of files: " + filesToInject.length);
 
+        LinkedList<FileInfo> filePaths = new LinkedList<>();
+
         for (File file : filesToInject) {
-            FileInputStream fileInputStream = new FileInputStream(file);
-            AttachmentFile attachmentFile = createAttachmentFile(file.getName(), fileInputStream);
-
-            /*SearchRequestBuilder srb1 = elasticsearchService.getElasticsearchClient()
-                    .prepareSearch() .setQuery(QueryBuilders.queryStringQuery("elasticsearch")).setSize(1);
-            SearchRequestBuilder srb2 = client
-                    .prepareSearch().setQuery(QueryBuilders.matchQuery("name", "kimchy")).setSize(1);*/
-
+            System.out.println("File " + i++);
+            FileInfo targetFile = createAttachmentFile(file.getName());
 
             SearchRequest searchRequest = new SearchRequest("invoices");
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-            searchSourceBuilder.query(QueryBuilders.matchQuery("bo_sno", 576));
+            searchSourceBuilder.query(QueryBuilders.matchQuery("sno", targetFile.getSno()));
+            searchSourceBuilder.query(QueryBuilders.matchQuery("bo_sno", targetFile.getBo_sno()));
+            searchSourceBuilder.query(QueryBuilders.matchQuery("date", targetFile.getCreationDate()));
+            searchSourceBuilder.query(QueryBuilders.matchQuery("uid", targetFile.getUniqueId()));
+            searchSourceBuilder.query(QueryBuilders.matchQuery("name", targetFile.getName()));
             searchRequest.source(searchSourceBuilder);
+
             SearchHits hits = elasticsearchService.getElasticsearchClient().search(searchRequest).getHits();
 
 
-            LinkedList<FileInfo> filePaths = new LinkedList<>();
+            //Retrieve results from search
             hits.forEach(searchHitField ->
                     filePaths.add(
                             new FileInfo(
@@ -71,26 +81,46 @@ public class Search {
                             )
                     )
             );
-
-            FileStorage fileStorage = new FileStorage(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
-
-            for (FileInfo fileInfo : filePaths) {
-                System.out.println("Försöker hämta: " + fileInfo.generateFileNameWithDirectories());
-                fileStorage.getObject(fileInfo.getBucket(), fileInfo.generateFileNameWithDirectories(), "retrievedFiles");
-            }
         }
+
+        int distribution = 0;
+        for (FileInfo fileInfo : filePaths) {
+            fileDownloaders[distribution%numberOfThreads].addToBuffer(fileInfo);
+            distribution++;
+        }
+
+        ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
+
+        for (FileDownloader fileDownloader: fileDownloaders)
+            executor.execute(fileDownloader);
     }
 
-    private static AttachmentFile createAttachmentFile(String file, InputStream fileData){
+    private static FileInfo createAttachmentFile(String file){
 
         String[] fields = file.split("_");
 
-        return new AttachmentFile(Integer.parseInt(fields[0]),
+        return new FileInfo(Integer.parseInt(fields[0]),
                 Integer.parseInt(fields[1]),
                 fields[2],
                 fields[3],
                 fields[4],
-                fileData,
                 BUCKET_NAME);
+    }
+
+    private static FileDownloader[] initiateFileStorages(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
+
+        log.info("Initiating storage threads..");
+
+        FileDownloader[] fileDownloaders = new FileDownloader[numberOfThreads];
+
+        for (int i = 0; i < fileDownloaders.length; i++) {
+            fileDownloaders[i] = new FileDownloader(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
+
+            if (!fileDownloaders[i].checkIfBucketExists(BUCKET_NAME))
+                fileDownloaders[i].createBucket(BUCKET_NAME);
+
+        }
+
+        return fileDownloaders;
     }
 }
