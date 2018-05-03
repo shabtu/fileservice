@@ -36,11 +36,7 @@ public class FileDownloader extends FileStorage {
 
     private FileInfo parseFile(String fileName){
 
-
-
         String[] fields = fileName.split("/");
-
-        System.out.println("Field 4:" + fields[4].substring(0,fields[4].length()-1));
 
         return new FileInfo(Integer.parseInt(fields[0]),
                 Integer.parseInt(fields[1]),
@@ -49,7 +45,6 @@ public class FileDownloader extends FileStorage {
                 fields[4].substring(0,fields[4].length()-1),
                 "images");
     }
-
 
     @Override
     public void run(){

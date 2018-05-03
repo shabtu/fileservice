@@ -2,14 +2,8 @@ package search;
 
 import common.ElasticsearchService;
 import common.FileInfo;
-import common.FileStorage;
-import deblober.AttachmentFile;
 import io.minio.errors.*;
-import org.elasticsearch.action.search.MultiSearchRequest;
-import org.elasticsearch.action.search.SearchAction;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchRequestBuilder;
-import org.elasticsearch.index.query.MultiMatchQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 
 import org.elasticsearch.search.SearchHits;
@@ -19,9 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
@@ -53,7 +45,6 @@ public class Search {
         LinkedList<FileInfo> filePaths = new LinkedList<>();
 
         for (File file : filesToInject) {
-            System.out.println("File " + i++);
             FileInfo targetFile = createAttachmentFile(file.getName());
 
             SearchRequest searchRequest = new SearchRequest("invoices");
@@ -115,10 +106,6 @@ public class Search {
 
         for (int i = 0; i < fileDownloaders.length; i++) {
             fileDownloaders[i] = new FileDownloader(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
-
-            if (!fileDownloaders[i].checkIfBucketExists(BUCKET_NAME))
-                fileDownloaders[i].createBucket(BUCKET_NAME);
-
         }
 
         return fileDownloaders;

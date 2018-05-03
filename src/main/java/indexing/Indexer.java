@@ -34,7 +34,7 @@ public class Indexer {
     public static void main(String[] args) throws IOException, TimeoutException, InvalidKeyException, NoSuchAlgorithmException, XmlPullParserException, InvalidPortException, InternalException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InvalidEndpointException, RegionConflictException {
         // Create a minioClient with the Minio Server name, Port, Access key and Secret key.
 
-        int numberOfThreads = 10, distribution = 0;
+        int numberOfThreads = 100, distribution = 0;
 
         EventReceiver[] eventReceivers = initiateEventReceivers(numberOfThreads);
 
