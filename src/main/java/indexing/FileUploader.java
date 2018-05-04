@@ -15,6 +15,8 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 
+import static indexing.Indexer.BUCKET_NAME;
+
 public class FileUploader extends FileStorage {
 
 
@@ -47,7 +49,7 @@ public class FileUploader extends FileStorage {
             attachmentFile = buffer.remove();
             log.info("Thread " + currentThread().getId() + " is adding file: " + attachmentFile.getName());
             try {
-                putObjectStream("images", attachmentFile.generateFileNameWithDirectories(), attachmentFile.getFileData());
+                putObjectStream(BUCKET_NAME, attachmentFile.generateFileNameWithDirectories(), attachmentFile.getFileData());
             } catch (XmlPullParserException e) {
                 e.printStackTrace();
             } catch (NoSuchAlgorithmException e) {

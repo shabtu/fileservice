@@ -22,23 +22,24 @@ import java.util.concurrent.Executors;
 
 
 public class Search {
+
     private static final String ES_ENDPOINT = "localhost";
     private static final String MINIO_ENDPOINT = "http://localhost:9000";
     private static final String ACCESS_KEY = "minio";
     private static final String SECRET_KEY = "minio123";
-    private static final String BUCKET_NAME = "images";
+    static final String BUCKET_NAME = "vismaproceedoaplfile";
 
     private static final Logger log = LoggerFactory.getLogger(Search.class);
     private static int i;
 
     public static void main(String[] args) throws IOException, InvalidPortException, InvalidEndpointException, NoSuchAlgorithmException, XmlPullParserException, InvalidKeyException, InsufficientDataException, InvalidArgumentException, InternalException, NoResponseException, ErrorResponseException, InvalidBucketNameException, RegionConflictException {
-        int numberOfThreads = 2;
+        int numberOfThreads = 1;
 
         ElasticsearchService elasticsearchService = new ElasticsearchService(ES_ENDPOINT);
 
         File[] filesToInject = new File("downloads").listFiles();
 
-        FileDownloader[] fileDownloaders = initiateFileStorages(numberOfThreads);
+        FileDownloader[] fileDownloaders = initiateFileDownloaders(numberOfThreads);
 
         log.info("Number of files: " + filesToInject.length);
 
@@ -84,6 +85,7 @@ public class Search {
 
         for (FileDownloader fileDownloader: fileDownloaders)
             executor.execute(fileDownloader);
+
     }
 
     private static FileInfo createAttachmentFile(String file){
@@ -98,7 +100,7 @@ public class Search {
                 BUCKET_NAME);
     }
 
-    private static FileDownloader[] initiateFileStorages(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
+    private static FileDownloader[] initiateFileDownloaders(int numberOfThreads) throws InvalidPortException, InvalidEndpointException {
 
         log.info("Initiating storage threads..");
 

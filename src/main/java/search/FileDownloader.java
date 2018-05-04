@@ -8,11 +8,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParserException;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
+
+import static search.Search.BUCKET_NAME;
 
 public class FileDownloader extends FileStorage {
 
@@ -25,12 +26,35 @@ public class FileDownloader extends FileStorage {
         super(endpoint, accessKey, secretKey);
     }
 
-    public synchronized void getObject(String bucketName, String objectName, String folderName) throws IOException, InvalidKeyException, NoSuchAlgorithmException, InsufficientDataException, InvalidArgumentException, InternalException, NoResponseException, InvalidBucketNameException, XmlPullParserException, ErrorResponseException {
+    public synchronized void getObject(String bucketName, String objectName, String folderName) {
 
-        objectName = parseFile(objectName).generateFileNameWithDirectories();
-        File file = new File(folderName + "/" + objectName);
-            file.getParentFile().mkdirs();
-        minioClient.getObject("images", objectName, folderName + "/" + objectName);
+        String parsedObjectName = parseFile(objectName).generateFileNameWithDirectories();
+        File file = new File(folderName + "/" + parsedObjectName);
+        file.getParentFile().mkdirs();
+        try {
+            log.info("Thread " + currentThread().getId() + " is getting file: " + parsedObjectName );
+
+           //while (!file.exists()) {
+                minioClient.getObject(bucketName, parsedObjectName, folderName + "/" + parsedObjectName);
+                Thread.sleep(5000);
+            //}
+
+            //System.out.println("Name: " + minioClient.statObject(bucketName, parsedObjectName).name());
+
+            /*InputStream inputStream = minioClient.getObject(bucketName, parsedObjectName);
+
+            OutputStream out = new FileOutputStream(file);
+
+            byte[] buff = new byte[4096];
+            int len;
+
+            while ((len = inputStream.read(buff)) != -1) {
+                out.write(buff, 0, len);
+            }
+            out.close();*/
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
     }
 
@@ -43,38 +67,20 @@ public class FileDownloader extends FileStorage {
                 fields[2],
                 fields[3],
                 fields[4].substring(0,fields[4].length()-1),
-                "images");
+                BUCKET_NAME);
     }
 
     @Override
     public void run(){
         FileInfo fileInfo;
+        String bucketName;
         while (buffer.peek() != null) {
-             fileInfo = buffer.remove();
-            log.info("Thread " + currentThread().getId() + " is getting file: " + fileInfo.getName());
-            try {
-                getObject(fileInfo.getBucket(), fileInfo.generateFileNameWithDirectories(), "retrievedFiles");
-            } catch (XmlPullParserException e) {
-                e.printStackTrace();
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            } catch (InvalidKeyException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (InsufficientDataException e) {
-                e.printStackTrace();
-            } catch (InvalidArgumentException e) {
-                e.printStackTrace();
-            } catch (ErrorResponseException e) {
-                e.printStackTrace();
-            } catch (NoResponseException e) {
-                e.printStackTrace();
-            } catch (InvalidBucketNameException e) {
-                e.printStackTrace();
-            } catch (InternalException e) {
-                e.printStackTrace();
-            }
+            fileInfo = buffer.remove();
+
+            //Remove the " in front of the bucket name
+            bucketName  = fileInfo.getBucket().substring(1, fileInfo.getBucket().length());
+
+            getObject(bucketName, fileInfo.generateFileNameWithDirectories(), "retrievedFiles");
 
         }
 

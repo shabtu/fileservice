@@ -52,7 +52,7 @@ public class BlobDownloader implements CommandLineRunner {
                         rs.getString("UNIQUE_ID"),
                         nameFormatter(rs.getString("NAME")),
                         rs.getBlob("FILEDATA").getBinaryStream(),
-                        "images")
+                        "vismaproceedoaplfile")
         ).forEach(attachmentFile -> files.add(attachmentFile));
 
 
@@ -67,7 +67,7 @@ public class BlobDownloader implements CommandLineRunner {
 
             OutputStream out = new FileOutputStream(new File("downloads/" + attachmentFile.generateFileName()));
 
-            byte[] buff = new byte[4096];  // how much of the blob to read/write at a time
+            byte[] buff = new byte[4096];
             int len;
 
             while ((len = inputStream.read(buff)) != -1) {

@@ -26,7 +26,7 @@ public class Indexer {
     private static final String MINIO_ENDPOINT = "http://localhost:9000";
     private static final String ACCESS_KEY = "minio";
     private static final String SECRET_KEY = "minio123";
-    private static final String BUCKET_NAME = "images";
+    public static final String BUCKET_NAME = "vismaproceedoaplfile";
 
     private static final String RMQ_ENDPOINT = "localhost";
 
@@ -34,7 +34,7 @@ public class Indexer {
     public static void main(String[] args) throws IOException, TimeoutException, InvalidKeyException, NoSuchAlgorithmException, XmlPullParserException, InvalidPortException, InternalException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InvalidEndpointException, RegionConflictException {
         // Create a minioClient with the Minio Server name, Port, Access key and Secret key.
 
-        int numberOfThreads = 100, distribution = 0;
+        int numberOfThreads = 128, distribution = 0;
 
         EventReceiver[] eventReceivers = initiateEventReceivers(numberOfThreads);
 
