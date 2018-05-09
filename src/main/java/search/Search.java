@@ -19,6 +19,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class Search {
@@ -30,10 +31,12 @@ public class Search {
     static final String BUCKET_NAME = "vismaproceedoaplfile";
 
     private static final Logger log = LoggerFactory.getLogger(Search.class);
-    private static int i;
+    private static int numberOfThreads = 10;
 
-    public static void main(String[] args) throws IOException, InvalidPortException, InvalidEndpointException, NoSuchAlgorithmException, XmlPullParserException, InvalidKeyException, InsufficientDataException, InvalidArgumentException, InternalException, NoResponseException, ErrorResponseException, InvalidBucketNameException, RegionConflictException {
-        int numberOfThreads = 20;
+    int numberOfFiles = 1000;
+    AtomicInteger searchCounter = new AtomicInteger(0);
+
+    public void runSearch() throws IOException, InvalidPortException, InvalidEndpointException, NoSuchAlgorithmException, XmlPullParserException, InvalidKeyException, InsufficientDataException, InvalidArgumentException, InternalException, NoResponseException, ErrorResponseException, InvalidBucketNameException, RegionConflictException {
 
         ElasticsearchService elasticsearchService = new ElasticsearchService(ES_ENDPOINT);
 
@@ -100,14 +103,14 @@ public class Search {
                 BUCKET_NAME);
     }
 
-    private static FileSearcher[] initiateFileDownloaders(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, InvalidKeyException, NoSuchAlgorithmException, XmlPullParserException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
+    private FileSearcher[] initiateFileDownloaders(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, InvalidKeyException, NoSuchAlgorithmException, XmlPullParserException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
 
         log.info("Initiating storage threads..");
 
         FileSearcher[] fileSearchers = new FileSearcher[numberOfThreads];
 
         for (int i = 0; i < fileSearchers.length; i++) {
-            fileSearchers[i] = new FileSearcher(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
+            fileSearchers[i] = new FileSearcher(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY, this);
         }
 
         return fileSearchers;

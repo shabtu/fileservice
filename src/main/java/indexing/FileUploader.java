@@ -19,7 +19,7 @@ import static indexing.Indexer.BUCKET_NAME;
 
 public class FileUploader extends FileStorage {
 
-
+    /*Buffer used for storing files that are to be uploaded*/
     private LinkedList<AttachmentFile> buffer = new LinkedList<>();
 
     private static final Logger log = LoggerFactory.getLogger(FileUploader.class);
@@ -29,12 +29,11 @@ public class FileUploader extends FileStorage {
         super(endpoint, accessKey, secretKey);
     }
 
-
     public void putObjectStream(String bucketName, String objectName, InputStream inputStream) throws XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, IOException {
         try{
-            // Upload the zip file to the bucket with putObject
+            /* Upload the file to the bucket with putObject*/
             minioClient.putObject(bucketName, objectName, inputStream, "document");
-            //System.out.println("File is successfully uploaded as " + objectName + " to " + bucketName + " bucket.");
+            System.out.println("File is successfully uploaded as " + objectName + " to " + bucketName + " bucket.");
         } catch (MinioException e) {
             System.out.println("Error occurred: " + e);
         }
@@ -45,9 +44,10 @@ public class FileUploader extends FileStorage {
     public void run(){
 
         AttachmentFile attachmentFile;
+
+        /*All files in the buffer are uploaded to the Minio storage*/
         while (buffer.peek() != null) {
             attachmentFile = buffer.remove();
-            //log.info("Thread " + currentThread().getId() + " is adding file: " + attachmentFile.getName());
             try {
                 putObjectStream(BUCKET_NAME,  attachmentFile.generateFileNameWithDirectories(), attachmentFile.getFileData());
             } catch (XmlPullParserException e) {
@@ -59,13 +59,14 @@ public class FileUploader extends FileStorage {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
         }
 
+        /*When there is nothing else in the buffer the thread dies*/
         log.info("Thread " + currentThread().getId() + " died");
 
     }
 
+    /*Adds the files to the buffer for upload*/
     public void addToBuffer(AttachmentFile attachmentFile) {
         buffer.add(attachmentFile);
     }

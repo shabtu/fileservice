@@ -12,6 +12,7 @@ import java.io.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
+import java.util.concurrent.atomic.LongAdder;
 
 import static search.Search.BUCKET_NAME;
 
@@ -19,30 +20,31 @@ public class FileSearcher extends FileStorage {
 
 
     private static final Logger log = LoggerFactory.getLogger(FileSearcher.class);
+    private final Search search;
 
     private LinkedList<FileInfo> buffer = new LinkedList<>();
 
-    public FileSearcher(String endpoint, String accessKey, String secretKey) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, RegionConflictException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException {
+    public FileSearcher(String endpoint, String accessKey, String secretKey, Search search) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, RegionConflictException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException {
         super(endpoint, accessKey, secretKey);
+        this.search = search;
     }
 
     public void findObject(String bucketName, String objectName) {
 
         String parsedObjectName = parseFile(objectName).generateFileNameWithDirectories();
-        String fileName = parseFile(objectName).getName();
 
         try {
-            log.info("Thread " + currentThread().getId() + " is getting file: " + fileName );
 
-           System.out.println("Name: " + minioClient.statObject(bucketName, parsedObjectName).name());
-
+           // System.out.println("Found: " + minioClient.statObject(bucketName, parsedObjectName).name() + "[" + search.searchCounter.get() + "]");
             minioClient.statObject(bucketName, parsedObjectName);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
 
     }
 
+    /*Parse the file info and create a FileInfo*/
     private FileInfo parseFile(String fileName){
 
         String[] fields = fileName.split("/");
@@ -59,16 +61,26 @@ public class FileSearcher extends FileStorage {
     public void run(){
         FileInfo fileInfo;
         String bucketName;
+
+        /*Get each file info in the buffer to find on Minio*/
         while (buffer.peek() != null) {
             fileInfo = buffer.remove();
 
-            //Remove the " in front of the bucket name
+            /*Remove the citation in front of the bucket name*/
             bucketName  = fileInfo.getBucket().substring(1, fileInfo.getBucket().length());
 
+            /*Find the object on Minio*/
             findObject(bucketName, fileInfo.generateFileNameWithDirectories());
+
+            if (search.searchCounter.get() >= search.numberOfFiles)
+                break;
+            else {
+                System.out.println("Found " + search.searchCounter.getAndIncrement());
+            }
 
         }
 
+        /*When there are no more files to be found on Minio the thread dies*/
         log.info("Thread " + currentThread().getId() + " died");
     }
 

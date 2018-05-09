@@ -26,42 +26,49 @@ public class Indexer {
 
     private static final Logger log = LoggerFactory.getLogger(Indexer.class);
 
-    public LongAdder getIndexCounter() {
-        return indexCounter;
-    }
+    /*Number of files to be indexed*/
+    private final int numberOfFiles;
 
+    public AtomicInteger indexCounter = new AtomicInteger();
 
-    public LongAdder indexCounter = new LongAdder();
-
+    /*/Credentials for accessing Minio*/
     private static final String MINIO_ENDPOINT = "http://localhost:9000";
     private static final String ACCESS_KEY = "minio";
     private static final String SECRET_KEY = "minio123";
     public static final String BUCKET_NAME = "vismaproceedoaplfile";
 
+    /*RabbitMQ endpoint*/
     private static final String RMQ_ENDPOINT = "localhost";
 
+    /*Number of threads each for the file uploaders and the event receivers,
+     distributed using the "distribution" counter*/
     private int numberOfThreads = 100, distribution = 0;
 
+    /*Event receivers and file uploaders that are to be used*/
     private EventReceiver[] eventReceivers;
-    FileUploader[] fileUploaders;
+    private FileUploader[] fileUploaders;
 
-    public Indexer() throws IOException, TimeoutException, InvalidKeyException, NoSuchAlgorithmException, RegionConflictException, XmlPullParserException, InvalidPortException, InternalException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InvalidEndpointException, ErrorResponseException {
+    public Indexer(int numberOfFiles) throws IOException, TimeoutException, InvalidKeyException, NoSuchAlgorithmException, RegionConflictException, XmlPullParserException, InvalidPortException, InternalException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InvalidEndpointException, ErrorResponseException {
+
+        /*Event receivers and file uploaders are initiated*/
         eventReceivers = initiateEventReceivers(numberOfThreads);
-
         fileUploaders = initiateFileStorages(numberOfThreads);
+
+        this.numberOfFiles = numberOfFiles;
     }
 
     public void index(LinkedList<AttachmentFile> files) {
-        // Create a minioClient with the Minio Server name, Port, Access key and Secret key.
 
         log.info("Number of files: " + files.size());
 
-
+        /*Distribute upload tasks among file uploaders*/
         distributeFilesToUploaders(files);
 
+        /*Start the threads*/
         runUploadersAndReceivers();
 
 
+        /*Busy-waiting until all files are indexed*/
         while (indexCounter.intValue() < 1000) {
             try {
                 Thread.sleep(500);
@@ -70,7 +77,7 @@ public class Indexer {
             }
         }
 
-        System.out.println("DONE!!!!");
+        System.out.println("DONE!");
 
     }
 
@@ -94,19 +101,6 @@ public class Indexer {
         }
 
     }
-
-    /*private static AttachmentFile createAttachmentFile(String file, InputStream fileData){
-
-        String[] fields = file.split("_");
-
-        return new AttachmentFile(Integer.parseInt(fields[0]),
-                Integer.parseInt(fields[1]),
-                fields[2],
-                fields[3],
-                fields[4],
-                fileData,
-                BUCKET_NAME);
-    }*/
 
     private FileUploader[] initiateFileStorages(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
 
@@ -138,5 +132,9 @@ public class Indexer {
         }
 
         return eventReceivers;
+    }
+
+    public int getNumberOfFiles() {
+        return numberOfFiles;
     }
 }

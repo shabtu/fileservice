@@ -11,6 +11,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.xmlpull.v1.XmlPullParserException;
+import search.Search;
 
 import java.io.*;
 import java.security.InvalidKeyException;
@@ -26,12 +27,13 @@ public class BlobDownloader implements CommandLineRunner {
 
 
     public static LinkedList<AttachmentFile> files = new LinkedList<>();
+    private int numberOfFiles = 1000;
 
 
-    public static void main(String args[]) throws IOException, InvalidKeyException, NoSuchAlgorithmException, RegionConflictException, XmlPullParserException, InvalidPortException, InternalException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InvalidEndpointException, ErrorResponseException, SQLException {
-
+    public static void main(String args[]) {
 
         SpringApplication.run(BlobDownloader.class, args);
+
     }
 
     @Autowired
@@ -41,7 +43,7 @@ public class BlobDownloader implements CommandLineRunner {
     public void run(String... strings) throws Exception {
 
 
-        String sql = "SELECT SNO, BO_SNO, NAME, UNIQUE_ID, CREATIONDATE, FILEDATA FROM APL_FILE FETCH FIRST 1000 ROWS ONLY";
+        String sql = "SELECT SNO, BO_SNO, NAME, UNIQUE_ID, CREATIONDATE, FILEDATA FROM APL_FILE FETCH FIRST " + numberOfFiles + " ROWS ONLY";
 
         log.info("Querying for attachment files");
         jdbcTemplate.query(
@@ -60,31 +62,11 @@ public class BlobDownloader implements CommandLineRunner {
 
         log.info("Got " + files.size() + " attachment files");
 
-        Indexer indexer = new Indexer();
+        Indexer indexer = new Indexer(numberOfFiles);
+        Search search = new Search();
 
         indexer.index(files);
-
-        /*for (AttachmentFile attachmentFile : files) {
-
-            InputStream inputStream = attachmentFile.getFileData();
-
-            //fileQueue.add(attachmentFile);
-            File file = new File("download/" + attachmentFile.generateFileNameWithDirectories());
-            file.getParentFile().mkdirs();
-
-            FileOutputStream out = new FileOutputStream(new File("downloads/" + attachmentFile.generateFileName()));
-
-            byte[] buff = new byte[4096];
-            int len;
-
-            while ((len = inputStream.read(buff)) != -1) {
-                out.write(buff, 0, len);
-            }
-
-            out.close();
-
-        }*/
-
+        search.runSearch();
 
     }
 
