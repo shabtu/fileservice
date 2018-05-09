@@ -2,6 +2,7 @@ package search;
 
 import common.ElasticsearchService;
 import common.FileInfo;
+import common.FileStorage;
 import io.minio.errors.*;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -12,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParserException;
 
-import java.io.File;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -33,20 +33,19 @@ public class Search {
     private static int i;
 
     public static void main(String[] args) throws IOException, InvalidPortException, InvalidEndpointException, NoSuchAlgorithmException, XmlPullParserException, InvalidKeyException, InsufficientDataException, InvalidArgumentException, InternalException, NoResponseException, ErrorResponseException, InvalidBucketNameException, RegionConflictException {
-        int numberOfThreads = 1;
+        int numberOfThreads = 20;
 
         ElasticsearchService elasticsearchService = new ElasticsearchService(ES_ENDPOINT);
 
-        File[] filesToInject = new File("downloads").listFiles();
+        FileSearcher[] fileSearchers = initiateFileDownloaders(numberOfThreads);
 
-        FileDownloader[] fileDownloaders = initiateFileDownloaders(numberOfThreads);
-
-        log.info("Number of files: " + filesToInject.length);
+        LinkedList<String> filesToIndex = new FileStorage(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY).listObjects(BUCKET_NAME);
+                log.info("Number of files: " + filesToIndex.size());
 
         LinkedList<FileInfo> filePaths = new LinkedList<>();
 
-        for (File file : filesToInject) {
-            FileInfo targetFile = createAttachmentFile(file.getName());
+        for (String file : filesToIndex) {
+            FileInfo targetFile = createAttachmentFile(file);
 
             SearchRequest searchRequest = new SearchRequest("invoices");
             SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -77,20 +76,21 @@ public class Search {
 
         int distribution = 0;
         for (FileInfo fileInfo : filePaths) {
-            fileDownloaders[distribution%numberOfThreads].addToBuffer(fileInfo);
+            fileSearchers[distribution%numberOfThreads].addToBuffer(fileInfo);
             distribution++;
         }
 
         ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
 
-        for (FileDownloader fileDownloader: fileDownloaders)
-            executor.execute(fileDownloader);
+        for (FileSearcher fileSearcher: fileSearchers)
+            executor.execute(fileSearcher);
+
 
     }
 
     private static FileInfo createAttachmentFile(String file){
 
-        String[] fields = file.split("_");
+        String[] fields = file.split("/");
 
         return new FileInfo(Integer.parseInt(fields[0]),
                 Integer.parseInt(fields[1]),
@@ -100,16 +100,16 @@ public class Search {
                 BUCKET_NAME);
     }
 
-    private static FileDownloader[] initiateFileDownloaders(int numberOfThreads) throws InvalidPortException, InvalidEndpointException {
+    private static FileSearcher[] initiateFileDownloaders(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, InvalidKeyException, NoSuchAlgorithmException, XmlPullParserException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
 
         log.info("Initiating storage threads..");
 
-        FileDownloader[] fileDownloaders = new FileDownloader[numberOfThreads];
+        FileSearcher[] fileSearchers = new FileSearcher[numberOfThreads];
 
-        for (int i = 0; i < fileDownloaders.length; i++) {
-            fileDownloaders[i] = new FileDownloader(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
+        for (int i = 0; i < fileSearchers.length; i++) {
+            fileSearchers[i] = new FileSearcher(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
         }
 
-        return fileDownloaders;
+        return fileSearchers;
     }
 }

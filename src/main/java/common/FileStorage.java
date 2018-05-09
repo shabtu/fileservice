@@ -1,6 +1,7 @@
 package common;
 
 import deblober.AttachmentFile;
+import io.minio.Result;
 import io.minio.errors.*;
 
 import java.io.*;
@@ -8,6 +9,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.InvalidKeyException;
 import java.util.LinkedList;
 
+import io.minio.messages.Item;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParserException;
@@ -39,6 +41,15 @@ public class FileStorage extends Thread {
 
     public boolean checkIfBucketExists(String bucketName) throws IOException, InvalidKeyException, NoSuchAlgorithmException, InsufficientDataException, InternalException, NoResponseException, InvalidBucketNameException, XmlPullParserException, ErrorResponseException {
         return minioClient.bucketExists(bucketName);
+    }
+
+    public LinkedList<String> listObjects(String bucketName) throws XmlPullParserException, InsufficientDataException, NoSuchAlgorithmException, IOException, NoResponseException, InvalidKeyException, InternalException, InvalidBucketNameException, ErrorResponseException {
+        LinkedList<String> objectList = new LinkedList<>();
+
+        for (Result<Item> result : minioClient.listObjects(bucketName))
+            objectList.add(result.get().objectName());
+
+        return objectList;
     }
     public void putObject(String bucketName, String objectName, String fileName) throws XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, IOException {
         try{

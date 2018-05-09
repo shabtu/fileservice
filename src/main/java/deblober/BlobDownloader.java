@@ -1,6 +1,7 @@
 package deblober;
 
 import common.FileStorage;
+import indexing.Indexer;
 import io.minio.errors.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +41,7 @@ public class BlobDownloader implements CommandLineRunner {
     public void run(String... strings) throws Exception {
 
 
-        String sql = "SELECT SNO, BO_SNO, NAME, UNIQUE_ID, CREATIONDATE, FILEDATA FROM APL_FILE FETCH FIRST 5000 ROWS ONLY";
+        String sql = "SELECT SNO, BO_SNO, NAME, UNIQUE_ID, CREATIONDATE, FILEDATA FROM APL_FILE FETCH FIRST 1000 ROWS ONLY";
 
         log.info("Querying for attachment files");
         jdbcTemplate.query(
@@ -57,15 +58,21 @@ public class BlobDownloader implements CommandLineRunner {
 
 
 
-        for (AttachmentFile attachmentFile : files) {
+        log.info("Got " + files.size() + " attachment files");
+
+        Indexer indexer = new Indexer();
+
+        indexer.index(files);
+
+        /*for (AttachmentFile attachmentFile : files) {
 
             InputStream inputStream = attachmentFile.getFileData();
 
             //fileQueue.add(attachmentFile);
-            /*File file = new File("download/" + attachmentFile.generateFileNameWithDirectories());
-            file.getParentFile().mkdirs();*/
+            File file = new File("download/" + attachmentFile.generateFileNameWithDirectories());
+            file.getParentFile().mkdirs();
 
-            OutputStream out = new FileOutputStream(new File("downloads/" + attachmentFile.generateFileName()));
+            FileOutputStream out = new FileOutputStream(new File("downloads/" + attachmentFile.generateFileName()));
 
             byte[] buff = new byte[4096];
             int len;
@@ -74,7 +81,9 @@ public class BlobDownloader implements CommandLineRunner {
                 out.write(buff, 0, len);
             }
 
-        }
+            out.close();
+
+        }*/
 
 
     }

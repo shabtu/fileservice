@@ -34,7 +34,7 @@ public class FileUploader extends FileStorage {
         try{
             // Upload the zip file to the bucket with putObject
             minioClient.putObject(bucketName, objectName, inputStream, "document");
-            System.out.println("File is successfully uploaded as " + objectName + " to " + bucketName + " bucket.");
+            //System.out.println("File is successfully uploaded as " + objectName + " to " + bucketName + " bucket.");
         } catch (MinioException e) {
             System.out.println("Error occurred: " + e);
         }
@@ -47,9 +47,9 @@ public class FileUploader extends FileStorage {
         AttachmentFile attachmentFile;
         while (buffer.peek() != null) {
             attachmentFile = buffer.remove();
-            log.info("Thread " + currentThread().getId() + " is adding file: " + attachmentFile.getName());
+            //log.info("Thread " + currentThread().getId() + " is adding file: " + attachmentFile.getName());
             try {
-                putObjectStream(BUCKET_NAME, attachmentFile.generateFileNameWithDirectories(), attachmentFile.getFileData());
+                putObjectStream(BUCKET_NAME,  attachmentFile.generateFileNameWithDirectories(), attachmentFile.getFileData());
             } catch (XmlPullParserException e) {
                 e.printStackTrace();
             } catch (NoSuchAlgorithmException e) {

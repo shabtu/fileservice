@@ -1,27 +1,37 @@
 package indexing;
 
-import common.FileStorage;
 import deblober.AttachmentFile;
+
 import io.minio.errors.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.xmlpull.v1.XmlPullParserException;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
+
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+
+import java.util.LinkedList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
-
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
 
 
 public class Indexer {
 
     private static final Logger log = LoggerFactory.getLogger(Indexer.class);
+
+    public LongAdder getIndexCounter() {
+        return indexCounter;
+    }
+
+
+    public LongAdder indexCounter = new LongAdder();
 
     private static final String MINIO_ENDPOINT = "http://localhost:9000";
     private static final String ACCESS_KEY = "minio";
@@ -30,42 +40,62 @@ public class Indexer {
 
     private static final String RMQ_ENDPOINT = "localhost";
 
+    private int numberOfThreads = 100, distribution = 0;
 
-    public static void main(String[] args) throws IOException, TimeoutException, InvalidKeyException, NoSuchAlgorithmException, XmlPullParserException, InvalidPortException, InternalException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InvalidEndpointException, RegionConflictException {
+    private EventReceiver[] eventReceivers;
+    FileUploader[] fileUploaders;
+
+    public Indexer() throws IOException, TimeoutException, InvalidKeyException, NoSuchAlgorithmException, RegionConflictException, XmlPullParserException, InvalidPortException, InternalException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InvalidEndpointException, ErrorResponseException {
+        eventReceivers = initiateEventReceivers(numberOfThreads);
+
+        fileUploaders = initiateFileStorages(numberOfThreads);
+    }
+
+    public void index(LinkedList<AttachmentFile> files) {
         // Create a minioClient with the Minio Server name, Port, Access key and Secret key.
 
-        int numberOfThreads = 128, distribution = 0;
+        log.info("Number of files: " + files.size());
 
-        EventReceiver[] eventReceivers = initiateEventReceivers(numberOfThreads);
 
-        FileUploader[] fileUploaders = initiateFileStorages(numberOfThreads);
+        distributeFilesToUploaders(files);
 
-        File[] filesToInject = new File("downloads").listFiles();
+        runUploadersAndReceivers();
 
-        log.info("Number of files: " + filesToInject.length);
 
-        for (File file : filesToInject){
-            FileInputStream fileInputStream = new FileInputStream(file);
+        while (indexCounter.intValue() < 1000) {
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
 
-            AttachmentFile attachmentFile = createAttachmentFile(file.getName(), fileInputStream);
+        System.out.println("DONE!!!!");
 
-            log.info(fileUploaders[0].getName());
+    }
+
+    private void runUploadersAndReceivers() {
+
+        ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads*2);
+
+        for (EventReceiver eventReceiver : eventReceivers)
+            executor.execute(eventReceiver);
+
+
+        for (FileUploader fileUploader: fileUploaders)
+            executor.execute(fileUploader);
+    }
+
+    private void distributeFilesToUploaders(LinkedList<AttachmentFile> files) {
+        for (AttachmentFile attachmentFile : files){
 
             fileUploaders[distribution%numberOfThreads].addToBuffer(attachmentFile);
             distribution++;
         }
 
-        ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
-
-        for (EventReceiver eventReceiver : eventReceivers)
-            executor.execute(eventReceiver);
-
-        for (FileUploader fileUploader: fileUploaders)
-            executor.execute(fileUploader);
-
     }
 
-    private static AttachmentFile createAttachmentFile(String file, InputStream fileData){
+    /*private static AttachmentFile createAttachmentFile(String file, InputStream fileData){
 
         String[] fields = file.split("_");
 
@@ -76,9 +106,9 @@ public class Indexer {
                 fields[4],
                 fileData,
                 BUCKET_NAME);
-    }
+    }*/
 
-    private static FileUploader[] initiateFileStorages(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
+    private FileUploader[] initiateFileStorages(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
 
         log.info("Initiating storage threads..");
 
@@ -95,14 +125,14 @@ public class Indexer {
         return fileUploaders;
     }
 
-    private static EventReceiver[] initiateEventReceivers(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException, TimeoutException {
+    private EventReceiver[] initiateEventReceivers(int numberOfThreads) throws IOException, TimeoutException {
 
         log.info("Initiating storage threads..");
 
         EventReceiver[] eventReceivers = new EventReceiver[numberOfThreads];
 
         for (int i = 0; i < eventReceivers.length ; i++) {
-            eventReceivers[i] = new EventReceiver(RMQ_ENDPOINT);
+            eventReceivers[i] = new EventReceiver(RMQ_ENDPOINT, this);
             eventReceivers[i].createConnection();
             eventReceivers[i].initiateConsumer();
         }

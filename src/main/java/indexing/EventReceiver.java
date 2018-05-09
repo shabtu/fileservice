@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.rabbitmq.client.*;
 import common.FileInfo;
 import common.ElasticsearchService;
+import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
@@ -16,17 +17,20 @@ public class EventReceiver extends Thread{
 
     private static String RMQ_ENDPOINT;
     private static String queueName;
+    private final Indexer indexer;
     private Channel channel;
     private Consumer consumer;
     private int id = 0;
 
     private ElasticsearchService elasticsearchService =  new ElasticsearchService("localhost");
 
-    public EventReceiver(String endpoint){
+    public EventReceiver(String endpoint, Indexer indexer){
         RMQ_ENDPOINT = endpoint;
+        this.indexer = indexer;
     }
 
     public void createConnection() throws IOException, TimeoutException {
+
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost(RMQ_ENDPOINT);
         Connection connection = factory.newConnection();
@@ -52,12 +56,19 @@ public class EventReceiver extends Thread{
                                        AMQP.BasicProperties properties, byte[] body)
                     throws IOException {
                 String jsonString = new String(body, "UTF-8");
-                System.out.println(" [x] Received '" + jsonString + "'");
-                System.out.println("To queue: " + queueName);
+               // System.out.println(" [x] Received '" + jsonString + "'");
+                // System.out.println("To queue: " + queueName);
 
                 FileInfo file = parseFile(jsonString);
 
                 indexFile(file);
+
+                if (indexer.indexCounter.intValue() >= 1000)
+                    return;
+                else {
+                    System.out.println("Indexed files: " + indexer.indexCounter.intValue());
+                    indexer.indexCounter.increment();
+                }
             }
         };
     }
@@ -78,6 +89,7 @@ public class EventReceiver extends Thread{
 
     private void indexFile(FileInfo file) throws IOException {
         XContentBuilder builder = XContentFactory.jsonBuilder();
+
         builder.startObject();
         {
             builder.field("sno", file.getSno());
@@ -88,6 +100,7 @@ public class EventReceiver extends Thread{
             builder.field("bucket", file.getBucket());
         }
         builder.endObject();
+
         IndexRequest indexRequest = new IndexRequest("invoices", "doc",  file.getUniqueId())
                 .source(builder);
 
@@ -95,7 +108,7 @@ public class EventReceiver extends Thread{
     }
 
     private void startConsuming() throws IOException {
-         channel.basicConsume(queueName, true, consumer);
+        channel.basicConsume(queueName, true, consumer);
     }
 
     @Override

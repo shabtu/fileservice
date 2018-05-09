@@ -15,43 +15,28 @@ import java.util.LinkedList;
 
 import static search.Search.BUCKET_NAME;
 
-public class FileDownloader extends FileStorage {
+public class FileSearcher extends FileStorage {
 
 
-    private static final Logger log = LoggerFactory.getLogger(FileDownloader.class);
+    private static final Logger log = LoggerFactory.getLogger(FileSearcher.class);
 
     private LinkedList<FileInfo> buffer = new LinkedList<>();
 
-    public FileDownloader(String endpoint, String accessKey, String secretKey) throws InvalidPortException, InvalidEndpointException {
+    public FileSearcher(String endpoint, String accessKey, String secretKey) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, RegionConflictException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException {
         super(endpoint, accessKey, secretKey);
     }
 
-    public synchronized void getObject(String bucketName, String objectName, String folderName) {
+    public void findObject(String bucketName, String objectName) {
 
         String parsedObjectName = parseFile(objectName).generateFileNameWithDirectories();
-        File file = new File(folderName + "/" + parsedObjectName);
-        file.getParentFile().mkdirs();
+        String fileName = parseFile(objectName).getName();
+
         try {
-            log.info("Thread " + currentThread().getId() + " is getting file: " + parsedObjectName );
+            log.info("Thread " + currentThread().getId() + " is getting file: " + fileName );
 
-           //while (!file.exists()) {
-                minioClient.getObject(bucketName, parsedObjectName, folderName + "/" + parsedObjectName);
-                Thread.sleep(5000);
-            //}
+           System.out.println("Name: " + minioClient.statObject(bucketName, parsedObjectName).name());
 
-            //System.out.println("Name: " + minioClient.statObject(bucketName, parsedObjectName).name());
-
-            /*InputStream inputStream = minioClient.getObject(bucketName, parsedObjectName);
-
-            OutputStream out = new FileOutputStream(file);
-
-            byte[] buff = new byte[4096];
-            int len;
-
-            while ((len = inputStream.read(buff)) != -1) {
-                out.write(buff, 0, len);
-            }
-            out.close();*/
+            minioClient.statObject(bucketName, parsedObjectName);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -80,7 +65,7 @@ public class FileDownloader extends FileStorage {
             //Remove the " in front of the bucket name
             bucketName  = fileInfo.getBucket().substring(1, fileInfo.getBucket().length());
 
-            getObject(bucketName, fileInfo.generateFileNameWithDirectories(), "retrievedFiles");
+            findObject(bucketName, fileInfo.generateFileNameWithDirectories());
 
         }
 
