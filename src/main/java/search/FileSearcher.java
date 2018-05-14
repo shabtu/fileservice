@@ -75,13 +75,14 @@ public class FileSearcher extends FileStorage {
             if (search.searchCounter.get() >= search.numberOfFiles)
                 break;
             else {
-                System.out.println("Found " + search.searchCounter.getAndIncrement());
+                //System.out.println("Found " + search.searchCounter.getAndIncrement());
+                search.searchCounter.getAndIncrement();
             }
 
         }
 
         /*When there are no more files to be found on Minio the thread dies*/
-        log.info("Thread " + currentThread().getId() + " died");
+        //log.info("Thread " + currentThread().getId() + " died");
     }
 
     public void addToBuffer(FileInfo fileInfo) {

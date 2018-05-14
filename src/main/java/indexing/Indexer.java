@@ -69,7 +69,7 @@ public class Indexer {
 
 
         /*Busy-waiting until all files are indexed*/
-        while (indexCounter.intValue() < 1000) {
+        while (indexCounter.intValue() < numberOfFiles) {
             try {
                 Thread.sleep(500);
             } catch (InterruptedException e) {

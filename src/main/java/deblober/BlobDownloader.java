@@ -17,6 +17,7 @@ import java.io.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -26,7 +27,10 @@ public class BlobDownloader implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(BlobDownloader.class);
 
 
+    /* The files that are to be indexed*/
     public static LinkedList<AttachmentFile> files = new LinkedList<>();
+
+    /* Number of files to index from the database */
     private int numberOfFiles = 1000;
 
 
@@ -45,7 +49,7 @@ public class BlobDownloader implements CommandLineRunner {
 
         String sql = "SELECT SNO, BO_SNO, NAME, UNIQUE_ID, CREATIONDATE, FILEDATA FROM APL_FILE FETCH FIRST " + numberOfFiles + " ROWS ONLY";
 
-        log.info("Querying for attachment files");
+        //log.info("Querying for attachment files");
         jdbcTemplate.query(
                 sql,
                 (rs, rowNum) -> new AttachmentFile(
@@ -60,13 +64,28 @@ public class BlobDownloader implements CommandLineRunner {
 
 
 
-        log.info("Got " + files.size() + " attachment files");
+        //log.info("Got " + files.size() + " attachment files");
+
 
         Indexer indexer = new Indexer(numberOfFiles);
-        Search search = new Search();
+        Search search = new Search(numberOfFiles);
 
+        long indexStartTime = System.nanoTime();
         indexer.index(files);
+        long indexStopTime = System.nanoTime();
+
+        long indexingTime = (indexStopTime-indexStartTime)/1000000000;
+
+        log.info("Indexing time: " + indexingTime/60 + " minutes and " + indexingTime%60 + " seconds.");
+
+        long searchStartTime = System.nanoTime();
         search.runSearch();
+        long searchStopTime = System.nanoTime();
+
+        long searchTime = (searchStopTime-searchStartTime)/1000000000;
+
+        log.info("Search time: " + searchTime/60 + " minutes and " + searchTime%60 + " seconds.");
+
 
     }
 

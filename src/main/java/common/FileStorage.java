@@ -55,9 +55,9 @@ public class FileStorage extends Thread {
         try{
             // Upload the zip file to the bucket with putObject
             minioClient.putObject(bucketName, objectName, fileName);
-            System.out.println("File is successfully uploaded as " + fileName + " to " + bucketName + " bucket.");
+            //System.out.println("File is successfully uploaded as " + fileName + " to " + bucketName + " bucket.");
         } catch (MinioException e) {
-            System.out.println("Error occurred: " + e);
+            //System.out.println("Error occurred: " + e);
         }
 
     }

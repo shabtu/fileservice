@@ -24,7 +24,6 @@ public class FileUploader extends FileStorage {
 
     private static final Logger log = LoggerFactory.getLogger(FileUploader.class);
 
-
     public FileUploader(String endpoint, String accessKey, String secretKey) throws InvalidPortException, InvalidEndpointException {
         super(endpoint, accessKey, secretKey);
     }
@@ -33,9 +32,9 @@ public class FileUploader extends FileStorage {
         try{
             /* Upload the file to the bucket with putObject*/
             minioClient.putObject(bucketName, objectName, inputStream, "document");
-            System.out.println("File is successfully uploaded as " + objectName + " to " + bucketName + " bucket.");
+            //System.out.println("File is successfully uploaded as " + objectName + " to " + bucketName + " bucket.");
         } catch (MinioException e) {
-            System.out.println("Error occurred: " + e);
+            //System.out.println("Error occurred: " + e);
         }
 
     }
@@ -62,7 +61,7 @@ public class FileUploader extends FileStorage {
         }
 
         /*When there is nothing else in the buffer the thread dies*/
-        log.info("Thread " + currentThread().getId() + " died");
+        //log.info("Thread " + currentThread().getId() + " died");
 
     }
 

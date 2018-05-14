@@ -74,7 +74,7 @@ public class EventReceiver extends Thread{
                 if (indexer.indexCounter.get() >= indexer.getNumberOfFiles())
                     return;
                 else {
-                    System.out.println("Number of indexed files: " + indexer.indexCounter.get());
+                    //System.out.println("Number of indexed files: " + indexer.indexCounter.get());
                     indexer.indexCounter.getAndIncrement();
                 }
             }
