@@ -31,7 +31,7 @@ public class BlobDownloader implements CommandLineRunner {
     public static LinkedList<AttachmentFile> files = new LinkedList<>();
 
     /* Number of files to index from the database */
-    private int numberOfFiles = 1000;
+    private int numberOfFiles = 5000;
 
 
     public static void main(String args[]) {
@@ -47,24 +47,14 @@ public class BlobDownloader implements CommandLineRunner {
     public void run(String... strings) throws Exception {
 
 
-        String sql = "SELECT SNO, BO_SNO, NAME, UNIQUE_ID, CREATIONDATE, FILEDATA FROM APL_FILE FETCH FIRST " + numberOfFiles + " ROWS ONLY";
 
-        //log.info("Querying for attachment files");
-        jdbcTemplate.query(
-                sql,
-                (rs, rowNum) -> new AttachmentFile(
-                        rs.getInt("SNO"),
-                        rs.getInt("BO_SNO"),
-                        rs.getDate("CREATIONDATE").toString(),
-                        rs.getString("UNIQUE_ID"),
-                        nameFormatter(rs.getString("NAME")),
-                        rs.getBlob("FILEDATA").getBinaryStream(),
-                        "vismaproceedoaplfile")
-        ).forEach(attachmentFile -> files.add(attachmentFile));
+        log.info("Querying for attachment files");
 
 
+        /*Returns the amount of files specified from the database */
+        getFilesFromDatabase();
 
-        //log.info("Got " + files.size() + " attachment files");
+        log.info("Got " + files.size() + " attachment files");
 
 
         Indexer indexer = new Indexer(numberOfFiles);
@@ -76,7 +66,7 @@ public class BlobDownloader implements CommandLineRunner {
 
         long indexingTime = (indexStopTime-indexStartTime)/1000000000;
 
-        log.info("Indexing time: " + indexingTime/60 + " minutes and " + indexingTime%60 + " seconds.");
+        log.info("Indexing time: " + indexingTime/60 + " minute(s) and " + indexingTime%60 + " second(s).");
 
         long searchStartTime = System.nanoTime();
         search.runSearch();
@@ -84,7 +74,7 @@ public class BlobDownloader implements CommandLineRunner {
 
         long searchTime = (searchStopTime-searchStartTime)/1000000000;
 
-        log.info("Search time: " + searchTime/60 + " minutes and " + searchTime%60 + " seconds.");
+        log.info("Search time: " + searchTime/60 + " minute(s) and " + searchTime%60 + " second(s).");
 
 
     }
@@ -102,5 +92,22 @@ public class BlobDownloader implements CommandLineRunner {
         }
 
         return nameBuilder.toString();
+    }
+
+    private void getFilesFromDatabase(){
+
+        String sql = "SELECT SNO, BO_SNO, NAME, UNIQUE_ID, CREATIONDATE, FILEDATA, FILESIZE FROM APL_FILE FETCH FIRST " + numberOfFiles + " ROWS ONLY";
+
+        jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> new AttachmentFile(
+                        rs.getInt("SNO"),
+                        rs.getInt("BO_SNO"),
+                        rs.getDate("CREATIONDATE").toString(),
+                        rs.getString("UNIQUE_ID"),
+                        nameFormatter(rs.getString("NAME")),
+                        rs.getBlob("FILEDATA").getBinaryStream(),
+                        "vismaproceedoaplfile")
+        ).forEach(attachmentFile -> files.add(attachmentFile));
     }
 }

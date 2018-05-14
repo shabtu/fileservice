@@ -140,7 +140,7 @@ public class Search {
 
     private FileSearcher[] initiateFileSearchers(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, InvalidKeyException, NoSuchAlgorithmException, XmlPullParserException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
 
-        log.info("Initiating storage threads..");
+        log.info("Initiating file searcher threads..");
 
         FileSearcher[] fileSearchers = new FileSearcher[numberOfThreads];
 

@@ -42,7 +42,7 @@ public class Indexer {
 
     /*Number of threads each for the file uploaders and the event receivers,
      distributed using the "distribution" counter*/
-    private int numberOfThreads = 100, distribution = 0;
+    private int numberOfThreads = 50, distribution = 0;
 
     /*Event receivers and file uploaders that are to be used*/
     private EventReceiver[] eventReceivers;
@@ -52,7 +52,7 @@ public class Indexer {
 
         /*Event receivers and file uploaders are initiated*/
         eventReceivers = initiateEventReceivers(numberOfThreads);
-        fileUploaders = initiateFileStorages(numberOfThreads);
+        fileUploaders = initiateFileUploaders(numberOfThreads);
 
         this.numberOfFiles = numberOfFiles;
     }
@@ -102,9 +102,9 @@ public class Indexer {
 
     }
 
-    private FileUploader[] initiateFileStorages(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
+    private FileUploader[] initiateFileUploaders(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
 
-        log.info("Initiating storage threads..");
+        log.info("Initiating file uploader threads..");
 
         FileUploader[] fileUploaders = new FileUploader[numberOfThreads];
 
@@ -121,7 +121,7 @@ public class Indexer {
 
     private EventReceiver[] initiateEventReceivers(int numberOfThreads) throws IOException, TimeoutException {
 
-        log.info("Initiating storage threads..");
+        log.info("Initiating event receiver threads..");
 
         EventReceiver[] eventReceivers = new EventReceiver[numberOfThreads];
 
