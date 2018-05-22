@@ -32,29 +32,26 @@ public class Search {
     static final String BUCKET_NAME = "vismaproceedoaplfile";
 
     private static final Logger log = LoggerFactory.getLogger(Search.class);
-    private static int numberOfThreads = 10;
+    private int numberOfThreads;
 
-
-    public int numberOfFiles;
     AtomicInteger searchCounter = new AtomicInteger(0);
 
 
     private FileSearcher[] fileSearchers;
+    public int numberOfFiles;
 
-    public Search(int numberOfFiles){
-        this.numberOfFiles = numberOfFiles;
+    public Search(int numberOfThreads){
+        this.numberOfThreads = numberOfThreads;
     }
 
-    public void runSearch() throws IOException, InvalidPortException, InvalidEndpointException, NoSuchAlgorithmException, XmlPullParserException, InvalidKeyException, InsufficientDataException, InternalException, NoResponseException, ErrorResponseException, InvalidBucketNameException, RegionConflictException {
+    public void runSearch(int numberOfFiles) throws IOException, InvalidPortException, InvalidEndpointException, NoSuchAlgorithmException, XmlPullParserException, InvalidKeyException, InsufficientDataException, InternalException, NoResponseException, ErrorResponseException, InvalidBucketNameException, RegionConflictException {
 
-
+        this.numberOfFiles = numberOfFiles;
 
         /* Get all files from the object storage to search for them in Elasticsearch and Minio */
         LinkedList<String> filesToFind = new FileStorage(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY).listObjects(BUCKET_NAME);
 
         LinkedList<FileInfo> filePaths = new LinkedList<>();
-
-        log.info("Number of files: " + filesToFind.size());
 
         /* Find files indexes on the Elasticsearch server*/
         filePaths = getFileIndexes(filePaths, filesToFind);
@@ -62,9 +59,11 @@ public class Search {
         /* Distribute file paths among the threads to parallellize it*/
         distributeSearchAmongThreads(filePaths);
 
+
         /* Start the threads */
         runSearchers();
 
+        long searchStartTime = System.nanoTime();
         /*Wait until all files are found*/
         while (searchCounter.intValue() < numberOfFiles) {
             try {
@@ -74,7 +73,14 @@ public class Search {
             }
         }
 
-        System.out.println("DONE!");
+
+        long searchStopTime = System.nanoTime();
+
+
+        long searchTime = (searchStopTime-searchStartTime)/1000000;
+
+        log.info("Search time: " + searchTime + "  milliseconds.\n");
+
 
     }
 
@@ -139,8 +145,6 @@ public class Search {
     }
 
     private FileSearcher[] initiateFileSearchers(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, InvalidKeyException, NoSuchAlgorithmException, XmlPullParserException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
-
-        log.info("Initiating file searcher threads..");
 
         FileSearcher[] fileSearchers = new FileSearcher[numberOfThreads];
 

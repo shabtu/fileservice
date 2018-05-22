@@ -1,8 +1,6 @@
 package deblober;
 
-import common.FileStorage;
 import indexing.Indexer;
-import io.minio.errors.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,16 +8,10 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.xmlpull.v1.XmlPullParserException;
 import search.Search;
 
-import java.io.*;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.sql.SQLException;
-import java.util.Date;
 import java.util.LinkedList;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.List;
 
 @SpringBootApplication
 public class BlobDownloader implements CommandLineRunner {
@@ -28,10 +20,10 @@ public class BlobDownloader implements CommandLineRunner {
 
 
     /* The files that are to be indexed*/
-    public static LinkedList<AttachmentFile> files = new LinkedList<>();
+    public List<AttachmentFile> files = new LinkedList<>();
 
     /* Number of files to index from the database */
-    private int numberOfFiles = 5000;
+    private int numberOfFiles = 2048;
 
 
     public static void main(String args[]) {
@@ -46,37 +38,25 @@ public class BlobDownloader implements CommandLineRunner {
     @Override
     public void run(String... strings) throws Exception {
 
-
-
-        log.info("Querying for attachment files");
-
-
         /*Returns the amount of files specified from the database */
-        getFilesFromDatabase();
 
-        log.info("Got " + files.size() + " attachment files");
+        int numberOfIndexThreads = 1;
+        Indexer indexer = new Indexer(numberOfIndexThreads);
+        files = getFilesFromDatabase(numberOfFiles);
+        for (int testSize = 32; testSize < numberOfFiles; testSize*=2) {
+            log.info("Test size: " + testSize);
 
+            indexer.index(files.subList(0, testSize-1));
+        }
 
-        Indexer indexer = new Indexer(numberOfFiles);
-        Search search = new Search(numberOfFiles);
+        int numberOfSearchThreads = 1;
 
-        long indexStartTime = System.nanoTime();
-        indexer.index(files);
-        long indexStopTime = System.nanoTime();
+        Search search = new Search(numberOfSearchThreads);
 
-        long indexingTime = (indexStopTime-indexStartTime)/1000000000;
-
-        log.info("Indexing time: " + indexingTime/60 + " minute(s) and " + indexingTime%60 + " second(s).");
-
-        long searchStartTime = System.nanoTime();
-        search.runSearch();
-        long searchStopTime = System.nanoTime();
-
-        long searchTime = (searchStopTime-searchStartTime)/1000000000;
-
-        log.info("Search time: " + searchTime/60 + " minute(s) and " + searchTime%60 + " second(s).");
-
-
+        for (int testSize = 32; testSize <= numberOfFiles; testSize*=2) {
+            log.info("Test size: " + testSize);
+            search.runSearch(testSize);
+        }
     }
 
     private String nameFormatter(String name) {
@@ -94,11 +74,11 @@ public class BlobDownloader implements CommandLineRunner {
         return nameBuilder.toString();
     }
 
-    private void getFilesFromDatabase(){
+    private List<AttachmentFile> getFilesFromDatabase(int testSize){
 
-        String sql = "SELECT SNO, BO_SNO, NAME, UNIQUE_ID, CREATIONDATE, FILEDATA, FILESIZE FROM APL_FILE FETCH FIRST " + numberOfFiles + " ROWS ONLY";
+        String sql = "SELECT SNO, BO_SNO, NAME, UNIQUE_ID, CREATIONDATE, FILEDATA, FILESIZE FROM APL_FILE FETCH FIRST " + testSize + " ROWS ONLY";
 
-        jdbcTemplate.query(
+        return jdbcTemplate.query(
                 sql,
                 (rs, rowNum) -> new AttachmentFile(
                         rs.getInt("SNO"),
@@ -108,6 +88,7 @@ public class BlobDownloader implements CommandLineRunner {
                         nameFormatter(rs.getString("NAME")),
                         rs.getBlob("FILEDATA").getBinaryStream(),
                         "vismaproceedoaplfile")
-        ).forEach(attachmentFile -> files.add(attachmentFile));
+        );
+
     }
 }

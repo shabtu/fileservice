@@ -15,6 +15,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
@@ -27,7 +28,7 @@ public class Indexer {
     private static final Logger log = LoggerFactory.getLogger(Indexer.class);
 
     /*Number of files to be indexed*/
-    private final int numberOfFiles;
+    private int numberOfFiles;
 
     public AtomicInteger indexCounter = new AtomicInteger();
 
@@ -42,24 +43,23 @@ public class Indexer {
 
     /*Number of threads each for the file uploaders and the event receivers,
      distributed using the "distribution" counter*/
-    private int numberOfThreads = 50, distribution = 0;
+    private int numberOfThreads, distribution = 0;
 
     /*Event receivers and file uploaders that are to be used*/
     private EventReceiver[] eventReceivers;
     private FileUploader[] fileUploaders;
+    private static LinkedList<AttachmentFile> files = new LinkedList<>();
 
-    public Indexer(int numberOfFiles) throws IOException, TimeoutException, InvalidKeyException, NoSuchAlgorithmException, RegionConflictException, XmlPullParserException, InvalidPortException, InternalException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InvalidEndpointException, ErrorResponseException {
+    public Indexer(int numberOfThreads) throws IOException, TimeoutException, InvalidKeyException, NoSuchAlgorithmException, RegionConflictException, XmlPullParserException, InvalidPortException, InternalException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InvalidEndpointException, ErrorResponseException {
 
         /*Event receivers and file uploaders are initiated*/
         eventReceivers = initiateEventReceivers(numberOfThreads);
         fileUploaders = initiateFileUploaders(numberOfThreads);
 
-        this.numberOfFiles = numberOfFiles;
+        this.numberOfThreads = numberOfThreads;
     }
 
-    public void index(LinkedList<AttachmentFile> files) {
-
-        log.info("Number of files: " + files.size());
+    public void index(List<AttachmentFile> files) {
 
         /*Distribute upload tasks among file uploaders*/
         distributeFilesToUploaders(files);
@@ -67,17 +67,24 @@ public class Indexer {
         /*Start the threads*/
         runUploadersAndReceivers();
 
+        numberOfFiles = files.size();
+        long indexStartTime = System.nanoTime();
 
         /*Busy-waiting until all files are indexed*/
-        while (indexCounter.intValue() < numberOfFiles) {
+        while (indexCounter.intValue() < files.size()) {
             try {
                 Thread.sleep(500);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
+        long indexStopTime = System.nanoTime();
 
-        System.out.println("DONE!");
+        long indexingTime = (indexStopTime-indexStartTime)/1000000000;
+
+        log.info("Indexing time: " + indexingTime + " seconds.\n");
+
+        files = null;
 
     }
 
@@ -93,7 +100,7 @@ public class Indexer {
             executor.execute(fileUploader);
     }
 
-    private void distributeFilesToUploaders(LinkedList<AttachmentFile> files) {
+    private void distributeFilesToUploaders(List<AttachmentFile> files) {
         for (AttachmentFile attachmentFile : files){
 
             fileUploaders[distribution%numberOfThreads].addToBuffer(attachmentFile);
@@ -103,8 +110,6 @@ public class Indexer {
     }
 
     private FileUploader[] initiateFileUploaders(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
-
-        log.info("Initiating file uploader threads..");
 
         FileUploader[] fileUploaders = new FileUploader[numberOfThreads];
 
@@ -120,8 +125,6 @@ public class Indexer {
     }
 
     private EventReceiver[] initiateEventReceivers(int numberOfThreads) throws IOException, TimeoutException {
-
-        log.info("Initiating event receiver threads..");
 
         EventReceiver[] eventReceivers = new EventReceiver[numberOfThreads];
 

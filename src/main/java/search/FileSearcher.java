@@ -35,7 +35,7 @@ public class FileSearcher extends FileStorage {
 
         try {
 
-           // System.out.println("Found: " + minioClient.statObject(bucketName, parsedObjectName).name() + "[" + search.searchCounter.get() + "]");
+            //System.out.println("Found: " + minioClient.statObject(bucketName, parsedObjectName).name() + "[" + search.searchCounter.get() + "]");
             minioClient.statObject(bucketName, parsedObjectName);
 
         } catch (Exception e) {
