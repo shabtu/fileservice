@@ -23,7 +23,7 @@ public class BlobDownloader implements CommandLineRunner {
     public List<AttachmentFile> files = new LinkedList<>();
 
     /* Number of files to index from the database */
-    private int numberOfFiles = 2048;
+    private int numberOfFiles = 4096;
 
 
     public static void main(String args[]) {
@@ -43,7 +43,7 @@ public class BlobDownloader implements CommandLineRunner {
         int numberOfIndexThreads = 1;
         Indexer indexer = new Indexer(numberOfIndexThreads);
         files = getFilesFromDatabase(numberOfFiles);
-        for (int testSize = 32; testSize < numberOfFiles; testSize*=2) {
+        for (int testSize = 32; testSize <= numberOfFiles; testSize*=2) {
             log.info("Test size: " + testSize);
 
             indexer.index(files.subList(0, testSize-1));
