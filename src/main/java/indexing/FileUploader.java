@@ -28,13 +28,13 @@ public class FileUploader extends FileStorage {
         super(endpoint, accessKey, secretKey);
     }
 
-    public void putObjectStream(String bucketName, String objectName, InputStream inputStream) throws XmlPullParserException, NoSuchAlgorithmException, InvalidKeyException, IOException {
+    public void putObjectStream(String bucketName, String objectName, InputStream inputStream) {
         try{
             /* Upload the file to the bucket with putObject*/
             minioClient.putObject(bucketName, objectName, inputStream, "document");
             //System.out.println("File is successfully uploaded as " + objectName + " to " + bucketName + " bucket.");
-        } catch (MinioException e) {
-            //System.out.println("Error occurred: " + e);
+        } catch (Exception e) {
+            System.out.println("Error occurred: " + e.getMessage());
         }
 
     }
@@ -47,17 +47,11 @@ public class FileUploader extends FileStorage {
         /*All files in the buffer are uploaded to the Minio storage*/
         while (buffer.peek() != null) {
             attachmentFile = buffer.remove();
-            try {
-                putObjectStream(BUCKET_NAME,  attachmentFile.generateFileNameWithDirectories(), attachmentFile.getFileData());
-            } catch (XmlPullParserException e) {
-                e.printStackTrace();
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            } catch (InvalidKeyException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+                putObjectStream(
+                        BUCKET_NAME,
+                        attachmentFile.generateFileNameWithDirectories(),
+                        attachmentFile.getFileData());
+
         }
 
         /*When there is nothing else in the buffer the thread dies*/

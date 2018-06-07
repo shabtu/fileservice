@@ -1,9 +1,14 @@
 package search;
 
+import common.ElasticsearchService;
 import common.FileInfo;
 import common.FileStorage;
 import deblober.AttachmentFile;
 import io.minio.errors.*;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParserException;
@@ -17,6 +22,7 @@ import java.util.concurrent.atomic.LongAdder;
 import static search.Search.BUCKET_NAME;
 
 public class FileSearcher extends FileStorage {
+
 
 
     private static final Logger log = LoggerFactory.getLogger(FileSearcher.class);
@@ -80,10 +86,10 @@ public class FileSearcher extends FileStorage {
             }
 
         }
-
         /*When there are no more files to be found on Minio the thread dies*/
         //log.info("Thread " + currentThread().getId() + " died");
     }
+
 
     public void addToBuffer(FileInfo fileInfo) {
         buffer.add(fileInfo);

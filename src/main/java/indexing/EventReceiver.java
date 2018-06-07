@@ -26,7 +26,7 @@ public class EventReceiver extends Thread{
     private Channel channel;
     private Consumer consumer;
 
-    private ElasticsearchService elasticsearchService =  new ElasticsearchService("localhost");
+    private ElasticsearchService elasticsearchService =  new ElasticsearchService("10.12.97.63");
 
     public EventReceiver(String endpoint, Indexer indexer){
         RMQ_ENDPOINT = endpoint;
@@ -62,7 +62,7 @@ public class EventReceiver extends Thread{
                                        AMQP.BasicProperties properties, byte[] body)
                     throws IOException {
                 String jsonString = new String(body, "UTF-8");
-               // System.out.println(" [x] Received '" + jsonString + "'");
+                //System.out.println(" [x] Received '" + jsonString + "'");
 
                 /*Parse the incoming JSON-object*/
                 FileInfo file = parseFile(jsonString);
@@ -94,7 +94,6 @@ public class EventReceiver extends Thread{
     /*Uses the Elasticsearch client to index the file using its info*/
     private void indexFile(FileInfo file) throws IOException {
         XContentBuilder builder = XContentFactory.jsonBuilder();
-
 
         /*Input the correct fields for the entry to Elasticsearch*/
         builder.startObject();

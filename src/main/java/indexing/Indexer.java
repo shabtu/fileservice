@@ -59,7 +59,7 @@ public class Indexer {
         this.numberOfThreads = numberOfThreads;
     }
 
-    public void index(List<AttachmentFile> files) {
+    public long index(List<AttachmentFile> files) {
 
         /*Distribute upload tasks among file uploaders*/
         distributeFilesToUploaders(files);
@@ -68,6 +68,7 @@ public class Indexer {
         runUploadersAndReceivers();
 
         numberOfFiles = files.size();
+        indexCounter.set(0);
         long indexStartTime = System.nanoTime();
 
         /*Busy-waiting until all files are indexed*/
@@ -80,11 +81,10 @@ public class Indexer {
         }
         long indexStopTime = System.nanoTime();
 
-        long indexingTime = (indexStopTime-indexStartTime)/1000000000;
-
-        log.info("Indexing time: " + indexingTime + " seconds.\n");
-
         files = null;
+
+        return (indexStopTime-indexStartTime)/1000000000;
+
 
     }
 
@@ -98,6 +98,7 @@ public class Indexer {
 
         for (FileUploader fileUploader: fileUploaders)
             executor.execute(fileUploader);
+
     }
 
     private void distributeFilesToUploaders(List<AttachmentFile> files) {
@@ -114,6 +115,7 @@ public class Indexer {
         FileUploader[] fileUploaders = new FileUploader[numberOfThreads];
 
         for (int i = 0; i < fileUploaders.length; i++) {
+
             fileUploaders[i] = new FileUploader(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY);
 
             if (!fileUploaders[i].checkIfBucketExists(BUCKET_NAME))

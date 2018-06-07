@@ -7,7 +7,7 @@ import io.minio.errors.*;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.index.query.QueryBuilders;
 
-import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,40 +25,44 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Search {
 
     /* Credentials for accessing Minio and Elasticsearch*/
-    private static final String ES_ENDPOINT = "localhost";
     private static final String MINIO_ENDPOINT = "http://localhost:9000";
     private static final String ACCESS_KEY = "minio";
     private static final String SECRET_KEY = "minio123";
     static final String BUCKET_NAME = "vismaproceedoaplfile";
+    private static final String ES_ENDPOINT = "10.12.97.63";
 
     private static final Logger log = LoggerFactory.getLogger(Search.class);
+    private final LinkedList<String> filesToFind;
+    private LinkedList<FileInfo> filePaths;
     private int numberOfThreads;
 
     AtomicInteger searchCounter = new AtomicInteger(0);
 
-
     private FileSearcher[] fileSearchers;
     public int numberOfFiles;
 
-    public Search(int numberOfThreads){
+    public Search(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, InsufficientDataException, NoSuchAlgorithmException, XmlPullParserException, NoResponseException, InternalException, InvalidBucketNameException, InvalidKeyException, ErrorResponseException, RegionConflictException {
         this.numberOfThreads = numberOfThreads;
+
+        fileSearchers = initiateFileSearchers(numberOfThreads);
+
+        /* Get all files from the object storage to search for them in Elasticsearch and Minio */
+        filesToFind = new FileStorage(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY).listObjects(BUCKET_NAME);
+
+        filePaths = new LinkedList<>();
+
+        /* Find files indexes on the Elasticsearch server*/
+        filePaths = getFileIndexes(filesToFind);
     }
 
-    public void runSearch(int numberOfFiles) throws IOException, InvalidPortException, InvalidEndpointException, NoSuchAlgorithmException, XmlPullParserException, InvalidKeyException, InsufficientDataException, InternalException, NoResponseException, ErrorResponseException, InvalidBucketNameException, RegionConflictException {
+    public long runSearch(int numberOfFiles) {
 
         this.numberOfFiles = numberOfFiles;
 
-        /* Get all files from the object storage to search for them in Elasticsearch and Minio */
-        LinkedList<String> filesToFind = new FileStorage(MINIO_ENDPOINT, ACCESS_KEY, SECRET_KEY).listObjects(BUCKET_NAME);
-
-        LinkedList<FileInfo> filePaths = new LinkedList<>();
-
-        /* Find files indexes on the Elasticsearch server*/
-        filePaths = getFileIndexes(filePaths, filesToFind);
+        searchCounter.set(0);
 
         /* Distribute file paths among the threads to parallellize it*/
         distributeSearchAmongThreads(filePaths);
-
 
         /* Start the threads */
         runSearchers();
@@ -67,7 +71,7 @@ public class Search {
         /*Wait until all files are found*/
         while (searchCounter.intValue() < numberOfFiles) {
             try {
-                Thread.sleep(500);
+                Thread.sleep(1);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -79,12 +83,13 @@ public class Search {
 
         long searchTime = (searchStopTime-searchStartTime)/1000000;
 
-        log.info("Search time: " + searchTime + "  milliseconds.\n");
+        return searchTime;
 
 
     }
 
-    private LinkedList<FileInfo> getFileIndexes(LinkedList<FileInfo> filePaths, LinkedList<String> filesToFind) throws IOException {
+
+    public LinkedList<FileInfo> getFileIndexes(LinkedList<String> filesToFind) throws IOException {
 
         ElasticsearchService elasticsearchService = new ElasticsearchService(ES_ENDPOINT);
 
@@ -100,37 +105,24 @@ public class Search {
             searchSourceBuilder.query(QueryBuilders.matchQuery("name", targetFile.getName()));
             searchRequest.source(searchSourceBuilder);
 
-            SearchHits hits = elasticsearchService.getElasticsearchClient().search(searchRequest).getHits();
-
+            SearchHit[] hits = elasticsearchService.getElasticsearchClient().search(searchRequest).getHits().getHits();
 
             //Retrieve results from search
-            hits.forEach(searchHitField ->
-                    filePaths.add(
-                            new FileInfo(
-                                    Integer.parseInt(searchHitField.getSource().get("sno").toString()),
-                                    Integer.parseInt(searchHitField.getSource().get("bo_sno").toString()),
-                                    searchHitField.getSource().get("date").toString(),
-                                    searchHitField.getSource().get("uid").toString(),
-                                    searchHitField.getSource().get("name").toString(),
-                                    searchHitField.getSource().get("bucket").toString()
-                            )
+
+            filePaths.add(
+                    new FileInfo(
+                            Integer.parseInt(hits[0].getSource().get("sno").toString()),
+                            Integer.parseInt(hits[0].getSource().get("bo_sno").toString()),
+                            hits[0].getSource().get("date").toString(),
+                            hits[0].getSource().get("uid").toString(),
+                            hits[0].getSource().get("name").toString(),
+                            hits[0].getSource().get("bucket").toString()
                     )
             );
         }
-
         return filePaths;
     }
 
-    private void distributeSearchAmongThreads(LinkedList<FileInfo> filePaths) throws IOException, XmlPullParserException, NoSuchAlgorithmException, RegionConflictException, InvalidKeyException, InvalidPortException, InternalException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InvalidEndpointException, ErrorResponseException {
-
-        fileSearchers = initiateFileSearchers(numberOfFiles);
-
-        int distribution = 0;
-        for (FileInfo fileInfo : filePaths) {
-            fileSearchers[distribution%numberOfThreads].addToBuffer(fileInfo);
-            distribution++;
-        }
-    }
 
     private static FileInfo createAttachmentFile(String file){
 
@@ -143,6 +135,23 @@ public class Search {
                 fields[4],
                 BUCKET_NAME);
     }
+
+    private void distributeSearchAmongThreads(LinkedList<FileInfo> filePaths) {
+
+        int distribution = 0;
+        //for (FileInfo fileInfo : filePaths) {
+        for (int i = 0; i < numberOfFiles; i++) {
+
+            if (i == 4095) {
+                fileSearchers[distribution % numberOfThreads].addToBuffer(filePaths.get(i - 1));
+                continue;
+            }
+
+            fileSearchers[distribution%numberOfThreads].addToBuffer(filePaths.get(i));
+            distribution++;
+        }
+    }
+
 
     private FileSearcher[] initiateFileSearchers(int numberOfThreads) throws InvalidPortException, InvalidEndpointException, IOException, InvalidKeyException, NoSuchAlgorithmException, XmlPullParserException, ErrorResponseException, NoResponseException, InvalidBucketNameException, InsufficientDataException, InternalException, RegionConflictException {
 

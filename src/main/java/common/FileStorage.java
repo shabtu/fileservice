@@ -1,6 +1,5 @@
 package common;
 
-import deblober.AttachmentFile;
 import io.minio.Result;
 import io.minio.errors.*;
 
@@ -21,6 +20,10 @@ public class FileStorage extends Thread {
 
 
     private static final Logger log = LoggerFactory.getLogger(FileStorage.class);
+
+    public MinioClient getMinioClient() {
+        return minioClient;
+    }
 
     protected final MinioClient minioClient;
 
